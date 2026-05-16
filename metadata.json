@@ -1,0 +1,8 @@
+{
+  "name": "متجر شحن فري فاير الاحترافي",
+  "description": "منصة متطورة لشحن جواهر فري فاير بآلية متطورة ولوحة تحكم شاملة",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
