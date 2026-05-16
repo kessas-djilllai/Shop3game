@@ -95,6 +95,34 @@ if (!is_logged_in()) { header("Location: index.php"); exit(); }
             <input type="hidden" id="diamonds">
         </div>
 
+        <div>
+            <label class="block text-sm text-gray-400 mb-3">طرق الدفع</label>
+            <div class="space-y-3">
+                <!-- جازي -->
+                <button type="button" class="relative w-full rounded-xl border-2 border-red-500 bg-slate-800 p-4 transition-all overflow-hidden flex items-center justify-center h-20">
+                    <div class="absolute top-0 right-0 rounded-bl-lg bg-red-600 px-3 py-1 text-[10px] font-bold text-white z-10 flex border-b border-l border-white/10 items-center gap-1">
+                        عرض خاص
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="text-xl font-black text-white">جازي</div>
+                        <div class="bg-red-600 text-white font-black text-lg px-2 py-1 transform -skew-x-12">
+                            DJEZZY
+                        </div>
+                    </div>
+                </button>
+
+                <!-- أوريدو (Ooredoo) -->
+                <div class="relative w-full rounded-xl border border-gray-600 bg-slate-800 p-4 h-20 flex items-center justify-center overflow-hidden grayscale">
+                    <div class="text-xl font-black text-red-500">ooredoo</div>
+                    <div class="absolute inset-0 bg-slate-900/80 flex items-center justify-center backdrop-blur-[2px]">
+                        <span class="text-xs font-bold text-gray-300">
+                            مغلق مؤقتاً للصيانة
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <button onclick="preSubmit()" id="submit_btn" class="w-full bg-blue-600 py-4 rounded-xl font-bold shadow-xl shadow-blue-900/20 active:scale-95 transition btn-l">
             طلب الشحن
         </button>

@@ -4,9 +4,9 @@ import axios from "axios";
 import { motion, AnimatePresence } from "motion/react";
 import {
   AlertTriangle,
+  ShieldCheck,
   CheckCircle2,
   ChevronDown,
-  AlignJustify,
   Globe,
   Info,
   MousePointerClick,
@@ -119,7 +119,7 @@ export default function Charge() {
       <header className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-white shadow-sm">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
               <img
                 src="https://storingo.lovestoblog.com/garena.png"
                 alt="Garena"
@@ -521,41 +521,57 @@ export default function Charge() {
         </section>
 
         {/* Fixed Bottom Bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white/98 px-4 py-3 pb-8 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white px-4 py-3 pb-8 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
-            {/* Right Side: Buy Button */}
+            {/* Price Info (Right side in RTL) */}
+            <div className="flex flex-col items-end leading-none">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100">
+                  <ChevronDown className="h-3.5 w-3.5 rotate-180 text-gray-800" />
+                </div>
+                <div className="flex items-center">
+                  {selectedInfo.bonus && selectedInfo.bonus !== "0" && (
+                    <span className="text-[#CD1212] font-black text-sm ml-1.5">
+                      {selectedInfo.bonus} +
+                    </span>
+                  )}
+                  <span className="text-2xl font-black text-gray-900 leading-none">
+                    {selectedInfo.amount}
+                  </span>
+                </div>
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="text-blue-400 drop-shadow-sm ml-1"
+                >
+                  <path d="M6 3L3 8L12 21L21 8L18 3H6Z" fill="currentColor" />
+                  <path
+                    d="M6 3L12 8V21M18 3L12 8M3 8H21"
+                    stroke="white"
+                    strokeWidth="0.5"
+                  />
+                </svg>
+              </div>
+              <div className="text-sm font-bold whitespace-nowrap">
+                <span className="text-gray-500">المجموع:</span>
+                <span className="text-[#CD1212] font-black text-xl ml-1.5">
+                  DZD {Number(selectedInfo.price).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Buy Button (Left side in RTL) */}
             <button
               onClick={handlePreSubmit}
-              className="flex flex-1 items-center justify-center gap-2.5 rounded-[18px] bg-[#CD1212] py-3 text-xl font-bold text-white shadow-lg shadow-red-600/25 active:scale-95 transition-all text-center whitespace-nowrap"
+              className="flex items-center justify-center gap-3 rounded-2xl bg-[#CD1212] px-8 py-3.5 text-2xl font-black text-white shadow-xl shadow-red-600/25 active:scale-95 transition-all text-center whitespace-nowrap"
             >
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg border-2 border-white/40">
-                <CheckCircle2 className="h-4 w-4" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg border-2 border-white/50">
+                <ShieldCheck className="h-5 w-5" />
               </div>
               شراء الآن
             </button>
-
-            {/* Left Side: Price Info */}
-            <div className="flex flex-col items-end leading-none">
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100">
-                  <ChevronDown className="h-3 w-3 rotate-180 text-gray-800" />
-                </div>
-                <div className="flex items-center gap-1">
-                  {selectedInfo.bonus && selectedInfo.bonus !== "0" && (
-                     <span className="text-[#CD1212] font-bold text-xs">+{selectedInfo.bonus}</span>
-                  )}
-                  <span className="text-xl font-black text-gray-900">{selectedInfo.amount}</span>
-                </div>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-blue-400">
-                  <path d="M6 3L3 8L12 21L21 8L18 3H6Z" fill="currentColor" />
-                  <path d="M6 3L12 8V21M18 3L12 8M3 8H21" stroke="white" strokeWidth="0.5" />
-                </svg>
-              </div>
-              <div className="text-xs font-bold whitespace-nowrap">
-                <span className="text-gray-500">المجموع:</span>
-                <span className="text-[#CD1212] font-black text-base ml-1">{selectedInfo.price} DZD</span>
-              </div>
-            </div>
           </div>
         </div>
 
