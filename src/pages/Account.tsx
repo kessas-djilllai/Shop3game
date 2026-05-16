@@ -19,52 +19,48 @@ export default function Account() {
   };
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden bg-[#f8fafc] p-6 md:p-12" dir="rtl">
-      {/* Decorative background elements */}
-      <div className="absolute top-[-10%] right-[-5%] h-96 w-96 rounded-full bg-blue-500/10 blur-[80px]" />
-      <div className="absolute bottom-[10%] left-[-10%] h-[500px] w-[500px] rounded-full bg-purple-500/10 blur-[100px]" />
-
-      <div className="relative z-10 mx-auto max-w-lg">
-        <div className="mb-10 flex items-center">
-          <button onClick={() => navigate('/dashboard')} className="ml-4 rounded-xl bg-white p-3 shadow-md transition-all hover:bg-gray-50 active:scale-90">
-            <ArrowRight className="h-6 w-6 text-gray-700" />
+    <div className="min-h-screen w-full relative bg-[#F8F9FA] p-4 md:p-8 font-sans" dir="rtl">
+      <div className="relative z-10 mx-auto max-w-lg pt-4">
+        <div className="mb-8 flex items-center gap-4">
+          <button onClick={() => navigate('/dashboard')} className="rounded-xl bg-white border border-gray-100 p-3 shadow-sm transition-all hover:bg-gray-50 active:scale-95">
+            <ArrowRight className="h-5 w-5 text-gray-700" />
           </button>
-          <h1 className="text-3xl font-black text-gray-900">حسابي</h1>
+          <h1 className="text-2xl font-black text-gray-900">حسابي</h1>
         </div>
 
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[35px] bg-white p-10 text-center shadow-2xl shadow-gray-200/50"
+          className="rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-sm"
         >
-          <div className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full border-2 border-blue-50 bg-blue-50 shadow-inner">
-            <User className="h-14 w-14 text-blue-600" />
+          <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-4 border-red-50 bg-[#CD1212] shadow-md">
+            <User className="h-10 w-10 text-white" />
           </div>
-          <h2 className="mb-1 text-2xl font-black text-gray-900">{user?.account_id}</h2>
-          <p className="text-sm font-bold text-gray-400">معرّف الحساب (ID)</p>
+          <h2 className="mb-0.5 text-2xl font-black text-gray-900">{user?.account_id}</h2>
+          <p className="text-xs font-bold text-gray-400">معرّف الحساب (ID)</p>
 
-          <div className="mt-10 grid gap-4 text-right">
-            <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-5">
-              <div className="flex items-center font-bold text-gray-500">
-                <ShieldCheck className="ml-3 h-5 w-5 text-emerald-600" />
+          <div className="mt-8 grid gap-3 text-right">
+            <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 p-4">
+              <div className="flex items-center font-bold text-gray-600 text-sm">
+                <ShieldCheck className="ml-2 h-4 w-4 text-emerald-600" />
                 مستوى الحساب
               </div>
-              <span className="text-xl font-black text-blue-600">{user?.level || 0}</span>
+              <span className="text-lg font-black text-gray-900">{user?.level || 0}</span>
             </div>
-            <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-5">
-              <div className="flex items-center font-bold text-gray-500">
-                <Calendar className="ml-3 h-5 w-5 text-blue-600" />
+            <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 p-4">
+              <div className="flex items-center font-bold text-gray-600 text-sm">
+                <Calendar className="ml-2 h-4 w-4 text-[#CD1212]" />
                 حالة الحساب
               </div>
-              <span className="font-bold text-emerald-600">نشط وصالح</span>
+              <span className="font-bold text-emerald-600 text-sm">نشط وصالح</span>
             </div>
           </div>
 
           <button 
             onClick={logout}
-            className="mt-10 flex w-full items-center justify-center rounded-2xl bg-red-600 p-5 font-black text-white shadow-lg shadow-red-600/20 transition-all hover:bg-red-700 hover:shadow-xl"
+            className="mt-8 flex w-full items-center justify-center rounded-xl bg-red-50/50 p-4 font-bold text-[#CD1212] transition-colors hover:bg-red-50"
           >
-            <LogOut className="ml-3 h-5 w-5" />
+            <LogOut className="ml-2 h-5 w-5" />
             تسجيل الخروج
           </button>
         </motion.div>

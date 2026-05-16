@@ -114,7 +114,7 @@ export default function Charge() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20 font-sans" dir="rtl">
+    <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans" dir="rtl">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
@@ -521,7 +521,7 @@ export default function Charge() {
         </section>
 
         {/* Fixed Bottom Bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white px-4 py-3 pb-8 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white px-4 pt-3 pb-4 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
             {/* Price Info (Right side in RTL) */}
             <div className="flex flex-col items-end leading-none">
