@@ -114,7 +114,7 @@ export default function Charge() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans" dir="rtl">
+    <div className="min-h-screen flex flex-col bg-[#F8F9FA] font-sans overflow-x-hidden" dir="rtl">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
@@ -164,7 +164,7 @@ export default function Charge() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 pt-4 space-y-6">
+      <main className="mx-auto max-w-4xl px-4 pt-4 space-y-6 flex-1 w-full pb-8">
         {/* Banners */}
         {isLoading ? (
           <div className="h-32 md:h-48 w-full animate-pulse rounded-2xl bg-gray-200" />
@@ -520,9 +520,35 @@ export default function Charge() {
           </div>
         </section>
 
-        {/* Fixed Bottom Bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white px-4 pt-3 pb-4 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
-          <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
+        {/* Footer */}
+        <footer className="mt-12 text-center text-xs text-gray-500 pb-36">
+          <p className="mb-4">© Garena Online. الحقوق كاملة.</p>
+          <div className="flex flex-wrap justify-center gap-4 text-gray-400">
+            <a href="#" className="hover:text-gray-600">
+              سياسة الخصوصية
+            </a>
+            <span>|</span>
+            <a href="#" className="hover:text-gray-600">
+              الشروط والأحكام
+            </a>
+            <span>|</span>
+            <a href="#" className="hover:text-gray-600">
+              مركز المساعدة
+            </a>
+            <span>|</span>
+            <a href="#" className="hover:text-gray-600">
+              FAQ
+            </a>
+          </div>
+        </footer>
+      </main>
+
+      {/* Floating Bottom Bar (Like Bottom Nav) */}
+      <div 
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white px-4 pt-3 pb-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] block w-full"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
             {/* Price Info (Right side in RTL) */}
             <div className="flex flex-col items-end leading-none">
               <div className="flex items-center gap-1.5 mb-1.5">
@@ -531,7 +557,7 @@ export default function Charge() {
                 </div>
                 <div className="flex items-center">
                   {selectedInfo.bonus && selectedInfo.bonus !== "0" && (
-                    <span className="text-[#CD1212] font-black text-sm ml-1.5">
+                     <span className="text-[#CD1212] font-black text-sm ml-1.5">
                       {selectedInfo.bonus} +
                     </span>
                   )}
@@ -574,29 +600,6 @@ export default function Charge() {
             </button>
           </div>
         </div>
-
-        {/* Footer */}
-        <footer className="mt-12 text-center text-xs text-gray-500">
-          <p className="mb-4">© Garena Online. الحقوق كاملة.</p>
-          <div className="flex flex-wrap justify-center gap-4 text-gray-400">
-            <a href="#" className="hover:text-gray-600">
-              سياسة الخصوصية
-            </a>
-            <span>|</span>
-            <a href="#" className="hover:text-gray-600">
-              الشروط والأحكام
-            </a>
-            <span>|</span>
-            <a href="#" className="hover:text-gray-600">
-              مركز المساعدة
-            </a>
-            <span>|</span>
-            <a href="#" className="hover:text-gray-600">
-              FAQ
-            </a>
-          </div>
-        </footer>
-      </main>
 
       {/* Confirmation Modal */}
       <Modal
