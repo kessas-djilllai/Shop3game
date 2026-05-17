@@ -1,10 +1,10 @@
 import { useState, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginRegister from './pages/LoginRegister';
-import Dashboard from './pages/Dashboard';
 import Charge from './pages/Charge';
 import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
+import Checkout from './pages/Checkout';
 import Admin from './pages/Admin';
 import { LanguageProvider } from './context/LanguageContext';
 import './index.css';
@@ -30,11 +30,12 @@ export default function App() {
           <Routes>
             <Route path="/" element={<LoginRegister />} />
             
-            <Route path="/dashboard" element={
-              <AuthGuard><Dashboard /></AuthGuard>
-            } />
+            <Route path="/dashboard" element={<Navigate to="/charge" replace />} />
             <Route path="/charge" element={
               <AuthGuard><Charge /></AuthGuard>
+            } />
+            <Route path="/checkout" element={
+              <AuthGuard><Checkout /></AuthGuard>
             } />
             <Route path="/my-orders" element={
               <AuthGuard><MyOrders /></AuthGuard>

