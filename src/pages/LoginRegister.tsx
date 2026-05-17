@@ -67,6 +67,7 @@ export default function LoginRegister() {
       
       localStorage.setItem('ff_token', res.data.token);
       localStorage.setItem('ff_user', JSON.stringify(res.data.user));
+
       navigate('/charge');
     } catch (err: any) {
       if (err.response?.status === 403 && err.response?.data?.status === 'banned') {
@@ -225,6 +226,7 @@ export default function LoginRegister() {
           </button>
         </div>
       </Modal>
+
     </div>
   );
 }

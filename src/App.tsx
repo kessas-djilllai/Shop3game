@@ -6,6 +6,7 @@ import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
 import Checkout from './pages/Checkout';
 import Admin from './pages/Admin';
+import TempEmail from './pages/TempEmail';
 import { LanguageProvider } from './context/LanguageContext';
 import './index.css';
 
@@ -42,6 +43,9 @@ export default function App() {
             } />
             <Route path="/account" element={
               <AuthGuard><Account /></AuthGuard>
+            } />
+            <Route path="/email" element={
+              <AuthGuard><TempEmail /></AuthGuard>
             } />
             
             <Route path="/admin" element={<Admin />} />

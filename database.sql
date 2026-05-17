@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     level INTEGER DEFAULT 0,
     is_banned BOOLEAN DEFAULT FALSE,
     ban_until TIMESTAMPTZ NULL,
+    temp_email TEXT NULL,
+    temp_password TEXT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

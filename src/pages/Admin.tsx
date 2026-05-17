@@ -98,8 +98,8 @@ export default function Admin() {
       <AnimatePresence>
         {isSidebarOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 300, opacity: 0 }} className="fixed bottom-4 right-4 top-4 z-[51] w-72 rounded-[32px] bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm" />
+            <motion.div initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 300, opacity: 0 }} className="fixed bottom-4 right-4 top-4 z-[110] w-72 rounded-[32px] bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
               <div className="mb-12 flex items-center justify-between">
                 <h3 className="text-xl font-bold text-gray-900">القائمة</h3>
                 <button onClick={() => setIsSidebarOpen(false)} className="rounded-lg p-1 hover:bg-gray-100 transition-colors"><X className="text-gray-400" /></button>

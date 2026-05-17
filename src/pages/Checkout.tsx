@@ -19,6 +19,7 @@ export default function Checkout() {
 
   const [promoCode, setPromoCode] = useState('');
   const [isPromoApplied, setIsPromoApplied] = useState(false);
+  const [phone, setPhone] = useState('');
   
   const [showConfirm, setShowConfirm] = useState(false);
   const [showProcess, setShowProcess] = useState(false);
@@ -27,6 +28,7 @@ export default function Checkout() {
   const [orderNum, setOrderNum] = useState('');
   const [isAgreed, setIsAgreed] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   const isOffer = typeof diamonds === 'string' && isNaN(Number(diamonds));
 
@@ -202,12 +204,28 @@ export default function Checkout() {
           </div>
 
           <div className="p-4 flex items-center justify-between border-t border-gray-50">
-            <span className="font-bold text-gray-600">{t('account_name')}</span>
+            <span className="font-bold text-gray-600">{t('account_id')}</span>
             <span className="font-bold text-gray-900 tracking-wider">
-              {user?.name || `user_${user?.account_id?.toString().substring(0,4)}`}
+              {user?.account_id}
             </span>
           </div>
         </div>
+
+        {paymentMethod === 'djezzy' && (
+          <div className="space-y-2 mt-4">
+            <label className="font-bold text-gray-700 text-sm">{language === 'ar' ? 'رقم هاتف جازي للدفع' : 'Djezzy Phone Number for Payment'}</label>
+            <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white" dir="ltr">
+               <div className="px-4 py-4 bg-gray-50 font-bold text-gray-700 border-r border-gray-200">+213</div>
+               <input 
+                 type="tel"
+                 value={phone}
+                 onChange={(e) => setPhone(e.target.value.replace(/^0/, '').replace(/[^0-9]/g, '').slice(0, 9))}
+                 placeholder="711223344"
+                 className="flex-1 p-4 bg-white outline-none font-mono text-left"
+               />
+            </div>
+          </div>
+        )}
 
         {/* Promo Code area */}
         <div className="space-y-2 mt-4">
@@ -241,8 +259,18 @@ export default function Checkout() {
         <div className="max-w-2xl mx-auto flex gap-4">
           <button 
             onClick={() => {
+               if (paymentMethod === 'djezzy') {
+                 if (phone.length !== 9) {
+                   alert(language === 'ar' ? "يرجى إدخال رقم هاتف جازي صحيح يتكون من 9 أرقام بدون وضع الصفر في البداية" : "Please enter a valid 9-digit Djezzy phone number without leading zero");
+                   return;
+                 }
+               }
                if(!isPromoApplied) {
-                  setShowError(true);
+                  setIsChecking(true);
+                  setTimeout(() => {
+                    setIsChecking(false);
+                    setShowError(true);
+                  }, 2500);
                   return;
                }
                setShowConfirm(true);
@@ -343,11 +371,28 @@ export default function Checkout() {
         </div>
       </Modal>
 
+      {/* Checking Modal */}
+      <Modal isOpen={isChecking} onClose={() => {}} title="">
+        <div className="py-10 text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+            className="mx-auto mb-8 h-20 w-20 rounded-full border-4 border-gray-100 border-t-red-600"
+          />
+          <h3 className="mb-2 text-xl font-black text-gray-800">
+            {language === 'ar' ? 'جاري التحضير...' : 'Processing...'}
+          </h3>
+          <p className="text-gray-500 font-medium mt-2">
+            {language === 'ar' ? 'الرجاء الانتظار...' : 'Please wait...'}
+          </p>
+        </div>
+      </Modal>
+
       {/* Error Modal */}
       <Modal
         isOpen={showError}
         onClose={() => setShowError(false)}
-        title={language === 'ar' ? "تنبيه" : "Alert"}
+        title=""
       >
         <div className="text-center">
           <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full bg-red-50">

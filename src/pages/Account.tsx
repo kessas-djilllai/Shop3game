@@ -44,13 +44,6 @@ export default function Account() {
           <div className={`mt-8 grid gap-3 ${language === 'en' ? 'text-left' : 'text-right'}`}>
             <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 p-4">
               <div className="flex items-center font-bold text-gray-600 text-sm">
-                <ShieldCheck className={`h-4 w-4 text-emerald-600 ${language === 'ar' ? 'ml-2' : 'mr-2'}`} />
-                {t('account_level')}
-              </div>
-              <span className="text-lg font-black text-gray-900">{user?.level || 0}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 p-4">
-              <div className="flex items-center font-bold text-gray-600 text-sm">
                 <Calendar className={`h-4 w-4 text-[#CD1212] ${language === 'ar' ? 'ml-2' : 'mr-2'}`} />
                 {t('account_status')}
               </div>

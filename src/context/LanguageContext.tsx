@@ -10,8 +10,8 @@ type Translations = {
 
 const translations: Translations = {
   ar: {
-    'garena_center': 'مركز الشحن',
-    'official': 'غير رسمي',
+    'garena_center': 'مركز قارينا',
+    'official': 'الثاني للشحن',
     'dz_ar': 'الجزائر - العربية',
     'dz_en': 'Algeria - English',
     'player_id': 'معرّف الحساب',
@@ -100,8 +100,8 @@ const translations: Translations = {
     'logout': 'تسجيل الخروج'
   },
   en: {
-    'garena_center': 'Recharge Center',
-    'official': 'Unofficial',
+    'garena_center': 'Garena Center',
+    'official': 'Second Recharge',
     'dz_ar': 'Algeria - Arabic',
     'dz_en': 'Algeria - English',
     'player_id': 'Player ID',

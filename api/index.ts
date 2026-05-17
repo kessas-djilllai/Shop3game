@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
 
 const app = express();
 app.use(express.json());
@@ -25,18 +26,66 @@ app.post('/api/register', async (req, res) => {
         
         if (existing) return res.status(400).json({ message: 'الايدي مسجل مسبقاً' });
 
+        // Generate temporary email
+        let temp_email = null;
+        let temp_password = null;
+        try {
+            const domainsRes = await axios.get('https://api.mail.gw/domains');
+            if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
+                const domain = domainsRes.data['hydra:member'][0].domain;
+                const username = `${account_id}ff`.toLowerCase();
+                temp_password = `${username}123456`;
+                temp_email = `${username}@${domain}`;
+
+                await axios.post('https://api.mail.gw/accounts', {
+                    address: temp_email,
+                    password: temp_password
+                });
+            }
+        } catch (mailErr: any) {
+            console.error("Failed to create temporary email:", mailErr?.response?.data || mailErr.message);
+            // Ignore error if account already exists
+            if (mailErr?.response?.status === 422) {
+                const domainsRes = await axios.get('https://api.mail.gw/domains');
+                if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
+                    const domain = domainsRes.data['hydra:member'][0].domain;
+                    const username = `${account_id}ff`.toLowerCase();
+                    temp_email = `${username}@${domain}`;
+                    temp_password = `${username}123456`;
+                }
+            }
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
-        const { data: newUser, error } = await supabase
+        
+        // Try inserting with temp_email and temp_password
+        let newUser, error;
+        const result = await supabase
             .from('users')
-            .insert([{ account_id, password: hashedPassword }])
+            .insert([{ account_id, password: hashedPassword, temp_email, temp_password }])
             .select()
             .single();
+            
+        newUser = result.data;
+        error = result.error;
+
+        // Fallback if columns don't exist yet
+        if (error && error.message.includes('Could not find')) {
+            const fallbackResult = await supabase
+                .from('users')
+                .insert([{ account_id, password: hashedPassword }])
+                .select()
+                .single();
+            newUser = fallbackResult.data;
+            error = fallbackResult.error;
+        }
 
         if (error) throw error;
 
         const token = jwt.sign({ id: newUser.id }, JWT_SECRET);
-        res.json({ token, user: { id: newUser.id, account_id } });
+        res.json({ token, user: { id: newUser.id, account_id, temp_email, temp_password } });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
     }
 });
@@ -68,9 +117,14 @@ app.post('/api/login', async (req, res) => {
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return res.status(401).json({ message: 'كلمة السر غير صحيحة' });
 
+        // Retrieve temp email and password from user record if they exist
+        const temp_email = user.temp_email || null;
+        const temp_password = user.temp_password || null;
+
         const token = jwt.sign({ id: user.id }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, account_id: user.account_id, level: user.level } });
+        res.json({ token, user: { id: user.id, account_id: user.account_id, level: user.level, temp_email, temp_password } });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
     }
 });
