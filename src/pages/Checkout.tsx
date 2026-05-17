@@ -129,7 +129,7 @@ export default function Checkout() {
         </div>
         
         <button 
-          onClick={() => navigate('/charge')}
+          onClick={() => navigate('/charge', { state: { returnToStep: 3, ...state } })}
           className={`absolute top-4 ${language === 'ar' ? 'right-4' : 'left-4'} flex items-center gap-1 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-bold backdrop-blur-sm`}
         >
           {language === 'ar' ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}

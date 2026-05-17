@@ -249,4 +249,45 @@ app.post('/api/admin/action', async (req, res) => {
     }
 });
 
+// Messages: Sync
+app.post('/api/messages/sync', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    const { messages } = req.body;
+    if (!token) return res.status(401).json({ message: 'Missing token' });
+    if (!messages || !Array.isArray(messages)) return res.status(400).json({ message: 'Invalid messages array' });
+    
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        
+        // For each message, insert it if it doesn't exist
+        for (const msg of messages) {
+            // Using upsert or select then insert
+            // Since we can't be sure of unique constraints in supabase without checking, let's just select first or upsert.
+            const { data: existing } = await supabase
+                .from('messages')
+                .select('id')
+                .eq('user_id', decoded.id)
+                .eq('message_id', msg.id)
+                .single();
+                
+            if (!existing) {
+                await supabase.from('messages').insert([{
+                    user_id: decoded.id,
+                    message_id: msg.id,
+                    from_address: msg.from?.address || '',
+                    from_name: msg.from?.name || '',
+                    subject: msg.subject || '',
+                    intro: msg.intro || ''
+                }]);
+            }
+        }
+        
+        res.json({ status: 'success' });
+    } catch (e) {
+        // If the table 'messages' doesn't exist, this will throw, but we catch it gracefully.
+        console.error("Messages sync error", e);
+        res.status(500).json({ status: 'error' });
+    }
+});
+
 export default app;

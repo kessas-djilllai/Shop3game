@@ -56,9 +56,9 @@ export default function TempEmail() {
         // Fallback or user doesn't have it configured in db
         console.error("No temp email found for this user in DB.");
         if (language === 'ar') {
-          alert('يرجى تسجيل الدخول مجددا او إنشاء حساب جديد للحصول على بريد وهمي.');
+          alert('يرجى تسجيل الدخول مجددا او إنشاء حساب جديد للحصول على بريد الخادم.');
         } else {
-          alert('Please login again or register a new account to get a temporary email.');
+          alert('Please login again or register a new account to get a server email.');
         }
       }
     } catch (err) {
@@ -74,7 +74,22 @@ export default function TempEmail() {
       const res = await axios.get('https://api.mail.gw/messages', {
         headers: { Authorization: `Bearer ${tkn}` }
       });
-      setMessages(res.data['hydra:member']);
+      const msgs = res.data['hydra:member'];
+      setMessages(msgs);
+      
+      // Sync to database
+      if (msgs && msgs.length > 0) {
+        const ff_token = localStorage.getItem('ff_token');
+        if (ff_token) {
+          try {
+            await axios.post('/api/messages/sync', { messages: msgs }, {
+              headers: { Authorization: `Bearer ${ff_token}` }
+            });
+          } catch(syncErr) {
+            console.error("Failed to sync messages to DB", syncErr);
+          }
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -158,7 +173,7 @@ export default function TempEmail() {
             <ArrowLeft className={`h-6 w-6 ${language === 'ar' ? 'rotate-180' : ''}`} />
           </button>
           <h1 className="text-xl font-black text-gray-800">
-            {language === 'ar' ? 'بريد إلكتروني وهمي' : 'Temporary Email'}
+            {language === 'ar' ? 'بريد الخادم' : 'Server Email'}
           </h1>
         </div>
       </header>
@@ -167,7 +182,7 @@ export default function TempEmail() {
         {loading ? (
           <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center space-y-4 h-48">
              <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-500 border-t-transparent" />
-             <p className="font-bold text-gray-500">{language === 'ar' ? 'جاري إنشاء بريد وهمي...' : 'Generating temporary email...'}</p>
+             <p className="font-bold text-gray-500">{language === 'ar' ? 'جاري المعالجة...' : 'Processing...'}</p>
           </div>
         ) : (
           <>
@@ -179,7 +194,7 @@ export default function TempEmail() {
                     <Globe className="h-6 w-6" />
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-sm font-semibold text-gray-500">{language === 'ar' ? 'بريدك الالكتروني' : 'Your Email'}</p>
+                    <p className="text-sm font-semibold text-gray-500">{language === 'ar' ? 'بريد الخادم' : 'Server Email'}</p>
                     <p className="font-black text-lg text-gray-900 truncate" dir="ltr">{email}</p>
                   </div>
                 </div>

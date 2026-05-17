@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
-import { Globe, ChevronDown, Check } from 'lucide-react';
+import { Globe, ChevronDown, Check, Eye, EyeOff } from 'lucide-react';
 import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
 import { useLanguage } from '../context/LanguageContext';
@@ -13,6 +13,7 @@ export default function LoginRegister() {
   const [isLogin, setIsLogin] = useState(true);
   const [accountId, setAccountId] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [banInfo, setBanInfo] = useState<{isOpen: boolean, msg: string}>({isOpen: false, msg: ''});
@@ -178,13 +179,22 @@ export default function LoginRegister() {
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-bold text-gray-700">{t('password')}</label>
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 pr-12 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rtl:pl-12 rtl:pr-4"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className={`absolute top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors ${language === 'ar' ? 'left-4' : 'right-4'}`}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
 
             {error && <p className="text-center text-sm font-bold text-red-500">{error}</p>}
