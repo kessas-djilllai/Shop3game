@@ -82,9 +82,13 @@ export default function TempEmail() {
         const ff_token = localStorage.getItem('ff_token');
         if (ff_token) {
           try {
-            await axios.post('/api/messages/sync', { messages: msgs }, {
+            const syncRes = await axios.post('/api/messages/sync', { messages: msgs }, {
               headers: { Authorization: `Bearer ${ff_token}` }
             });
+            const seenIds = syncRes.data.seen_messages || [];
+            if (seenIds.length > 0) {
+              setMessages(currentMsgs => currentMsgs.map(m => seenIds.includes(m.id) ? { ...m, seen: true } : m));
+            }
           } catch(syncErr) {
             console.error("Failed to sync messages to DB", syncErr);
           }
@@ -97,8 +101,27 @@ export default function TempEmail() {
     }
   };
 
-  const getMessageDetails = async (id: string) => {
+  const getMessageDetails = async (id: string, isSeen?: boolean) => {
     try {
+      if (!isSeen) {
+        setMessages(msgs => msgs.map(m => m.id === id ? { ...m, seen: true } : m));
+        
+        // Save to DB
+        const ff_token = localStorage.getItem('ff_token');
+        if (ff_token) {
+          axios.post('/api/messages/mark-seen', { message_id: id }, {
+            headers: { Authorization: `Bearer ${ff_token}` }
+          }).catch(err => console.error("Failed to mark message as seen in DB", err));
+        }
+
+        // Also update mail.gw natively for good measure
+        axios.patch(`https://api.mail.gw/messages/${id}`, { seen: true }, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/merge-patch+json'
+          }
+        }).catch(() => {});
+      }
       const res = await axios.get(`https://api.mail.gw/messages/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -236,16 +259,16 @@ export default function TempEmail() {
                           key={msg.id}
                           onClick={() => {
                             setSelectedMessage(msg);
-                            getMessageDetails(msg.id);
+                            getMessageDetails(msg.id, msg.seen);
                           }}
-                          className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedMessage?.id === msg.id ? 'bg-red-50/50' : ''}`}
+                          className={`p-4 cursor-pointer transition-colors ${selectedMessage?.id === msg.id ? 'bg-red-50/50' : 'hover:bg-gray-50'}`}
                         >
                           <div className="flex justify-between items-start mb-1">
-                            <span className="font-bold text-gray-900 truncate pr-2" title={msg.from.address}>{msg.from.name || msg.from.address}</span>
+                            <span className={`${msg.seen ? 'font-medium text-gray-500' : 'font-black text-gray-900'} truncate pr-2`} title={msg.from.address}>{msg.from.name || msg.from.address}</span>
                             <span className="text-[10px] text-gray-400 whitespace-nowrap">{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                           </div>
-                          <p className="text-sm font-semibold text-gray-700 truncate">{msg.subject || (language === 'ar' ? 'بدون عنوان' : 'No Subject')}</p>
-                          <p className="text-xs text-gray-500 truncate mt-1">{msg.intro}</p>
+                          <p className={`text-sm ${msg.seen ? 'font-medium text-gray-400' : 'font-bold text-gray-700'} truncate`}>{msg.subject || (language === 'ar' ? 'بدون عنوان' : 'No Subject')}</p>
+                          <p className={`text-xs ${msg.seen ? 'text-gray-400 opacity-70' : 'text-gray-500'} truncate mt-1`}>{msg.intro}</p>
                         </div>
                       ))}
                     </div>
