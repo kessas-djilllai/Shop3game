@@ -19,7 +19,8 @@ import {
   Check,
   Mail,
   Eye,
-  EyeOff
+  EyeOff,
+  ShieldAlert
 } from "lucide-react";
 import Modal from "../components/Modal";
 import { useLanguage } from "../context/LanguageContext";
@@ -232,6 +233,13 @@ export default function Charge() {
               >
                 <Mail className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
                 {language === 'ar' ? 'بريد الخادم' : 'Server Email'}
+              </button>
+              <button 
+                onClick={() => { setIsSidebarOpen(false); navigate('/admin'); }}
+                className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
+              >
+                <ShieldAlert className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
+                {language === 'ar' ? 'لوحة الإدارة' : 'Admin Panel'}
               </button>
 
               <div className="my-6 border-t border-gray-100"></div>
