@@ -406,7 +406,7 @@ export default function Checkout() {
       <Modal
         isOpen={showSuccess}
         onClose={() => navigate("/my-orders")}
-        title="تم التسجيل بنجاح"
+        title=""
       >
         <div className="text-center">
           <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-emerald-50">
