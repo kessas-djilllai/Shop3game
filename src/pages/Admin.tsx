@@ -11,13 +11,18 @@ export default function Admin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'orders' | 'users'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'users' | 'promo'>('orders');
   const [data, setData] = useState<any>({ orders: [], users: [] });
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejReason, setRejReason] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('pending');
+  
+  // Promo code state
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [isPromoLoading, setIsPromoLoading] = useState(false);
+  const [currentPromo, setCurrentPromo] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,8 +54,32 @@ export default function Admin() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setData(res.data);
+      
+      const promoRes = await axios.get('/api/promo-code');
+      setCurrentPromo(promoRes.data.promoCode || '');
+      setPromoCodeInput(promoRes.data.promoCode || '');
     } catch (e) {
       setIsAdmin(false);
+    }
+  };
+
+  const savePromoCode = async () => {
+    if (!/^[A-Z0-9]{16}$/.test(promoCodeInput)) {
+      alert('يجب أن يتكون كود التخفيض من 16 حرفاً أو رقماً لاتينياً كبيراً');
+      return;
+    }
+    setIsPromoLoading(true);
+    try {
+      const token = localStorage.getItem('ff_admin_token');
+      await axios.post('/api/admin/promo-code', { promoCode: promoCodeInput }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCurrentPromo(promoCodeInput);
+      alert('تم حفظ الكود بنجاح');
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'حدث خطأ');
+    } finally {
+      setIsPromoLoading(false);
     }
   };
 
@@ -112,6 +141,7 @@ export default function Admin() {
               <div className="space-y-3">
                 <button onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'orders' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>قسم الطلبات</button>
                 <button onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'users' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>إدارة الحسابات</button>
+                <button onClick={() => { setActiveTab('promo'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'promo' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>كود التخفيض</button>
                 <button onClick={() => navigate('/search-id')} className={`w-full rounded-xl p-4 text-right font-bold transition-all bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100 flex items-center justify-between`}><span>بحث بالايدي</span><Search className="h-5 w-5 text-gray-400" /></button>
               </div>
               <button onClick={() => { localStorage.removeItem('ff_admin_token'); setIsAdmin(false); }} className="absolute bottom-8 left-8 right-8 flex items-center justify-center rounded-xl bg-red-50 p-4 font-bold text-[#CD1212] transition-colors hover:bg-red-100 border border-red-100">
@@ -163,7 +193,7 @@ export default function Admin() {
               ))}
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'users' ? (
           <div className="space-y-4">
             <h2 className="mb-4 text-gray-500 font-bold px-2 flex items-center gap-2">
               <User className="h-4 w-4" />
@@ -192,7 +222,43 @@ export default function Admin() {
               ))}
             </div>
           </div>
-        )}
+        ) : activeTab === 'promo' ? (
+          <div className="space-y-4">
+            <h2 className="mb-4 text-gray-500 font-bold px-2 flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              تعديل كود التخفيض
+            </h2>
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">الكود الحالي:</label>
+                <div className="px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-mono font-bold text-emerald-600">
+                  {currentPromo || 'لا يوجد كود محدد'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">تعيين كود جديد (16 حرفاً/رقماً لاتينياً كبيراً):</label>
+                <input
+                  type="text"
+                  placeholder="مثال: FFGEMSMENA2026XX"
+                  value={promoCodeInput}
+                  onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                  maxLength={16}
+                  className="w-full rounded-xl border border-gray-300 bg-white p-4 text-sm font-bold text-gray-900 outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100 font-mono"
+                  dir="ltr"
+                />
+              </div>
+              <div className="pt-2">
+                <LoaderButton
+                  onClick={savePromoCode}
+                  isLoading={isPromoLoading}
+                  className="w-full bg-[#CD1212] text-white hover:bg-red-700 rounded-xl shadow-md"
+                >
+                  حفظ الكود
+                </LoaderButton>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Order Detail Modal */}

@@ -259,6 +259,53 @@ app.get('/api/admin/data', async (req, res) => {
     }
 });
 
+// Promo Code state (fallback if DB fails)
+let fallbackPromoCode = 'FFGEMSMENA2026';
+
+// Settings: Get Promo Code
+app.get('/api/promo-code', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'promo_code')
+            .single();
+            
+        if (error || !data) {
+            return res.json({ promoCode: fallbackPromoCode });
+        }
+        res.json({ promoCode: data.value });
+    } catch (e) {
+        res.json({ promoCode: fallbackPromoCode });
+    }
+});
+
+// Admin: Set Promo Code
+app.post('/api/admin/promo-code', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    const { promoCode } = req.body;
+    try {
+        const decoded: any = jwt.verify(token!, JWT_SECRET);
+        if (!decoded.isAdmin) throw new Error();
+
+        if (!/^[A-Z0-9]{16}$/.test(promoCode)) {
+            return res.status(400).json({ message: 'Code must be exactly 16 uppercase letters or numbers' });
+        }
+
+        const { error } = await supabase
+            .from('settings')
+            .upsert([{ key: 'promo_code', value: promoCode }]);
+            
+        if (error) {
+            // Fallback
+            fallbackPromoCode = promoCode;
+        }
+        res.json({ status: 'success' });
+    } catch (e) {
+        res.status(403).json({ message: 'Unauthorized' });
+    }
+});
+
 // Admin: Actions
 app.post('/api/admin/action', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];

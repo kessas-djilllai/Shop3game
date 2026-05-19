@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
@@ -29,8 +29,17 @@ export default function Checkout() {
   const [isAgreed, setIsAgreed] = useState(false);
   const [showError, setShowError] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [validPromoCode, setValidPromoCode] = useState('FFGEMSMENA2026');
 
   const [toastMessage, setToastMessage] = useState("");
+
+  useEffect(() => {
+    axios.get('/api/promo-code').then(res => {
+      if (res.data && res.data.promoCode) {
+        setValidPromoCode(res.data.promoCode);
+      }
+    }).catch(console.error);
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -67,7 +76,7 @@ export default function Checkout() {
   ];
 
   const handleApplyPromo = () => {
-    if (promoCode === 'FFGEMSMENA2026') {
+    if (promoCode === validPromoCode) {
       setIsPromoApplied(true);
     } else {
       showToast(language === 'ar' ? "الرمز خاطئ" : "Invalid promo code");

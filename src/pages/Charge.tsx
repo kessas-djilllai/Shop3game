@@ -827,24 +827,8 @@ export default function Charge() {
             <div className="flex-shrink-0 mt-1"><Check className="w-5 h-5 text-emerald-600" /></div>
             <p className="text-sm font-semibold text-gray-700">
               {language === 'ar' 
-                ? 'يجب أن يكون الحساب غير مبند (محظور).' 
-                : 'Account must not be banned.'}
-            </p>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 mt-1"><Check className="w-5 h-5 text-emerald-600" /></div>
-            <p className="text-sm font-semibold text-gray-700">
-              {language === 'ar' 
                 ? 'يجب التسجيل بالمنصة الرئيسية وليست الثانوية.' 
                 : 'You must register with the main platform, not a secondary one.'}
-            </p>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 mt-1"><Check className="w-5 h-5 text-emerald-600" /></div>
-            <p className="text-sm font-semibold text-gray-700">
-              {language === 'ar' 
-                ? 'يجب أن يكون الربط الأساسي بالإيميل وليس أي منصة أخرى.' 
-                : 'Primary binding must be via email, not any other platform.'}
             </p>
           </div>
           
