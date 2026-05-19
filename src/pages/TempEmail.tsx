@@ -56,9 +56,9 @@ export default function TempEmail() {
         // Fallback or user doesn't have it configured in db
         console.error("No temp email found for this user in DB.");
         if (language === 'ar') {
-          alert('يرجى تسجيل الدخول مجددا او إنشاء حساب جديد للحصول على بريد الخادم.');
+          alert('يرجى تسجيل الدخول مجددا او إنشاء حساب جديد للحصول على البريد المساعد.');
         } else {
-          alert('Please login again or register a new account to get a server email.');
+          alert('Please login again or register a new account to get a support email.');
         }
       }
     } catch (err) {
@@ -196,7 +196,7 @@ export default function TempEmail() {
             <ArrowLeft className={`h-6 w-6 ${language === 'ar' ? 'rotate-180' : ''}`} />
           </button>
           <h1 className="text-xl font-black text-gray-800">
-            {language === 'ar' ? 'بريد الخادم' : 'Server Email'}
+            {language === 'ar' ? 'البريد المساعد' : 'Support Email'}
           </h1>
         </div>
       </header>
@@ -217,7 +217,7 @@ export default function TempEmail() {
                     <Globe className="h-6 w-6" />
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-sm font-semibold text-gray-500">{language === 'ar' ? 'بريد الخادم' : 'Server Email'}</p>
+                    <p className="text-sm font-semibold text-gray-500">{language === 'ar' ? 'البريد المساعد' : 'Support Email'}</p>
                     <p className="font-black text-lg text-gray-900 truncate" dir="ltr">{email}</p>
                   </div>
                 </div>

