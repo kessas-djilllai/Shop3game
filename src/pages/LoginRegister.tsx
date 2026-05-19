@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
-import { Globe, ChevronDown, Check, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function LoginRegister() {
-  const { t, language, setLanguage } = useLanguage();
-  const [isLangOpen, setIsLangOpen] = useState(false);
+  const { t, language } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [accountId, setAccountId] = useState('');
   const [password, setPassword] = useState('');
@@ -83,66 +82,7 @@ export default function LoginRegister() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20 font-sans" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white shadow-sm">
-        <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
-              <img
-                src="https://storingo.lovestoblog.com/garena.png"
-                alt="Garena"
-                className="h-full w-full object-contain p-1"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            </div>
-            <div className="leading-tight">
-              <div className="text-sm font-bold text-gray-800">{t('garena_center')}</div>
-              <div className="text-xs font-semibold text-gray-500">{t('official')}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 relative">
-            <button 
-              onClick={() => setIsLangOpen(!isLangOpen)}
-              className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              <Globe className="h-4 w-4" />
-              <span>{language === 'ar' ? t('dz_ar') : t('dz_en')}</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${isLangOpen ? 'rotate-180' : ''}`} />
-            </button>
-            <AnimatePresence>
-              {isLangOpen && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute top-10 left-0 min-w-[160px] rounded-2xl bg-white p-2 shadow-xl border border-gray-100 z-50"
-                  dir={language === 'ar' ? 'rtl' : 'ltr'}
-                >
-                  <button 
-                    onClick={() => { setLanguage('ar'); setIsLangOpen(false); }}
-                    className={`flex items-center w-full text-right px-3 py-2 rounded-xl text-sm font-bold transition-colors ${language === 'ar' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'}`}
-                  >
-                    <span className="flex-1">العربية (dz)</span>
-                    {language === 'ar' && <Check className="h-4 w-4" />}
-                  </button>
-                  <button 
-                    onClick={() => { setLanguage('en'); setIsLangOpen(false); }}
-                    className={`flex items-center w-full text-right px-3 py-2 rounded-xl mt-1 text-sm font-bold transition-colors ${language === 'en' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'}`}
-                  >
-                    <span className="flex-1">English (dz)</span>
-                    {language === 'en' && <Check className="h-4 w-4" />}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-md px-4 pt-10">
+      <main className="mx-auto max-w-md px-4 pt-20">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -164,6 +104,22 @@ export default function LoginRegister() {
             <p className="text-sm text-gray-500">
               {isLogin ? t('login_to_start') : t('create_to_start')}
             </p>
+          </div>
+
+          {/* Modern Tabs */}
+          <div className="mb-6 flex rounded-xl bg-gray-100 p-1">
+            <button
+              onClick={() => { setIsLogin(true); setError(''); }}
+              className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition-all outline-none ${isLogin ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              {t('login')}
+            </button>
+            <button
+              onClick={() => { setIsLogin(false); setError(''); }}
+              className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition-all outline-none ${!isLogin ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              {t('register')}
+            </button>
           </div>
 
           <div className="space-y-4">
@@ -206,16 +162,6 @@ export default function LoginRegister() {
             >
               {isLogin ? t('login') : t('register')}
             </LoaderButton>
-
-            <div className="mt-4 text-center text-sm font-semibold text-gray-500">
-              {isLogin ? t('no_account') : t('have_account')}
-              <button 
-                onClick={() => { setIsLogin(!isLogin); setError(''); }}
-                className="text-red-600 hover:underline inline-block mx-1"
-              >
-                {isLogin ? t('register') : t('login')}
-              </button>
-            </div>
           </div>
         </motion.div>
       </main>

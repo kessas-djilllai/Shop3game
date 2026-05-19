@@ -213,9 +213,16 @@ export default function Checkout() {
           
           <div className="p-4 flex items-center justify-between border-t border-gray-50">
             <span className="font-bold text-gray-600">{t('price')}</span>
-            <span className={`font-black text-lg ${isPromoApplied ? 'text-emerald-500' : 'text-gray-900'}`}>
-              {isPromoApplied ? (language === 'ar' ? '0 دينار' : '0 DZD') : `DZD ${finalPrice.toLocaleString()}`}
-            </span>
+            <div className="flex items-center gap-2">
+              {isPromoApplied && (
+                <span className="text-sm font-bold text-gray-400 line-through decoration-red-500 decoration-2">
+                  {`DZD ${Number(selectedInfo?.price || 0).toLocaleString()}`}
+                </span>
+              )}
+              <span className={`font-black text-lg ${isPromoApplied ? 'text-emerald-500 scale-110 transition-transform' : 'text-gray-900'}`}>
+                {isPromoApplied ? (language === 'ar' ? '0 دينار' : '0 DZD') : `DZD ${finalPrice.toLocaleString()}`}
+              </span>
+            </div>
           </div>
           
           <div className="p-4 flex items-center justify-between border-t border-gray-50">

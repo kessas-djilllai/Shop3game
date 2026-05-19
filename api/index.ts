@@ -129,11 +129,48 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// User details
+app.get('/api/user/me', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        const { data: user } = await supabase.from('users').select('*').eq('id', decoded.id).single();
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        
+        if (user.is_banned) {
+            const now = new Date();
+            const banUntil = new Date(user.ban_until);
+            if (now < banUntil) {
+                const days = Math.ceil((banUntil.getTime() - now.getTime()) / (1000 * 3600 * 24));
+                return res.status(403).json({ status: 'banned', message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً` });
+            } else {
+                await supabase.from('users').delete().eq('id', user.id);
+                return res.status(404).json({ message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر' });
+            }
+        }
+        res.json({ status: 'success', user: { id: user.id, account_id: user.account_id, level: user.level } });
+    } catch (e) {
+        res.status(401).json({ message: 'Invalid token' });
+    }
+});
+
 // Orders: Create
 app.post('/api/orders', async (req, res) => {
     const { token, platform, email, platform_password, level, charged, diamonds } = req.body;
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
+        
+        const { data: user } = await supabase.from('users').select('is_banned, ban_until').eq('id', decoded.id).single();
+        if (user && user.is_banned) {
+            const now = new Date();
+            const banUntil = new Date(user.ban_until);
+            if (now < banUntil) {
+                const days = Math.ceil((banUntil.getTime() - now.getTime()) / (1000 * 3600 * 24));
+                return res.status(403).json({ status: 'banned', message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً` });
+            }
+        }
+        
         const order_num = "FF-" + Math.floor(100000 + Math.random() * 900000);
         
         let delivery = "سيتم التوصيل في غضون ";
