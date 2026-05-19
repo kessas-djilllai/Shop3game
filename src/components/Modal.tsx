@@ -8,9 +8,10 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   type?: 'default' | 'error' | 'success';
+  className?: string;
 }
 
-export default function Modal({ isOpen, onClose, title, children, type = 'default' }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, type = 'default', className = '' }: ModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -26,9 +27,9 @@ export default function Modal({ isOpen, onClose, title, children, type = 'defaul
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-md overflow-hidden rounded-[25px] border border-gray-100 bg-white p-8 shadow-2xl shadow-gray-200/50"
+            className={`relative w-full overflow-hidden rounded-[25px] border border-gray-100 bg-white p-6 md:p-8 shadow-2xl shadow-gray-200/50 ${className || 'max-w-md'}`}
           >
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between">
               <h3 className={`text-2xl font-black ${type === 'error' ? 'text-red-600' : type === 'success' ? 'text-emerald-600' : 'text-blue-600'}`}>
                 {title}
               </h3>

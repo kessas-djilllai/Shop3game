@@ -323,4 +323,18 @@ app.post('/api/messages/mark-seen', async (req, res) => {
     }
 });
 
+app.get('/api/search-player', async (req, res) => {
+    const { uid, server } = req.query;
+    try {
+        const response = await axios.get(`https://freefireinfo-zy9l.onrender.com/api/v1/player-profile?uid=${uid}&server=${server}`);
+        res.json(response.data);
+    } catch (error: any) {
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({ message: 'Network error or unable to connect to Free Fire API', error: error.message });
+        }
+    }
+});
+
 export default app;

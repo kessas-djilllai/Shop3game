@@ -14,9 +14,10 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState<'orders' | 'users'>('orders');
   const [data, setData] = useState<any>({ orders: [], users: [] });
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [isRejecting, setIsRejecting] = useState(false);
   const [rejReason, setRejReason] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('all');
+  const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('pending');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -111,6 +112,7 @@ export default function Admin() {
               <div className="space-y-3">
                 <button onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'orders' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>قسم الطلبات</button>
                 <button onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'users' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>إدارة الحسابات</button>
+                <button onClick={() => navigate('/search-id')} className={`w-full rounded-xl p-4 text-right font-bold transition-all bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100 flex items-center justify-between`}><span>بحث بالايدي</span><Search className="h-5 w-5 text-gray-400" /></button>
               </div>
               <button onClick={() => { localStorage.removeItem('ff_admin_token'); setIsAdmin(false); }} className="absolute bottom-8 left-8 right-8 flex items-center justify-center rounded-xl bg-red-50 p-4 font-bold text-[#CD1212] transition-colors hover:bg-red-100 border border-red-100">
                 <LogOut className="ml-2 h-5 w-5 rotate-180" />
@@ -194,28 +196,36 @@ export default function Admin() {
       </div>
 
       {/* Order Detail Modal */}
-      <Modal isOpen={!!selectedOrder} onClose={() => { setSelectedOrder(null); setRejReason(''); }} title="تفاصيل الطلب">
-        {selectedOrder && (
-          <div className="space-y-5">
-            <div className="flex flex-col gap-3 text-sm">
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4"><p className="text-gray-500 font-bold text-xs mb-1">المنصة:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.platform}</p></div>
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4"><p className="text-gray-500 font-bold text-xs mb-1">الايميل (البريد الإلكتروني):</p> <p className="font-black text-gray-900 break-all">{selectedOrder.email}</p></div>
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4"><p className="text-gray-500 font-bold text-xs mb-1">كلمة السر:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.platform_password}</p></div>
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4"><p className="text-gray-500 font-bold text-xs mb-1">الايدي:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.user_acc_id}</p></div>
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4"><p className="text-gray-500 font-bold text-xs mb-1">الجواهر:</p> <p className="font-black text-[#CD1212] truncate">{selectedOrder.diamonds}</p></div>
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4"><p className="text-gray-500 font-bold text-xs mb-1">شحن سابق:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.charged_before}</p></div>
+      <Modal isOpen={!!selectedOrder} onClose={() => { setSelectedOrder(null); setRejReason(''); setIsRejecting(false); }} title={isRejecting ? "سبب الرفض" : "تفاصيل الطلب"} className="max-w-[320px] !p-5">
+        {selectedOrder && !isRejecting && (
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 text-xs max-h-[50vh] overflow-y-auto pr-1">
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">المنصة:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.platform}</p></div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">الايميل (البريد الإلكتروني):</p> <p className="font-black text-gray-900 break-all">{selectedOrder.email}</p></div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">كلمة السر:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.platform_password}</p></div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">الايدي:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.user_acc_id}</p></div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">الجواهر:</p> <p className="font-black text-[#CD1212] truncate">{selectedOrder.diamonds}</p></div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">شحن سابق:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.charged_before}</p></div>
             </div>
 
             {selectedOrder.status === 'pending' && (
-              <div className="mt-6 pt-6 border-t border-gray-100">
-                <input placeholder="سبب الرفض (اختياري)" value={rejReason} onChange={e => setRejReason(e.target.value)} className="w-full mb-4 rounded-xl border border-gray-200 bg-white p-4 font-medium outline-none focus:border-red-500 transition-colors shadow-sm" />
-                <div className="flex gap-3">
-                  <button onClick={() => runAction({ action: 'accept_order', id: selectedOrder.id })} className="flex-1 rounded-xl bg-emerald-50 border border-emerald-100 py-3 font-black text-emerald-600 transition-all active:scale-95 hover:bg-emerald-100">قبول</button>
-                  <button onClick={() => runAction({ action: 'reject_order', id: selectedOrder.id, reason: rejReason })} className="flex-1 rounded-xl bg-red-50 border border-red-100 py-3 font-black text-red-600 transition-all active:scale-95 hover:bg-red-100">رفض</button>
-                </div>
+              <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+                <button onClick={() => runAction({ action: 'accept_order', id: selectedOrder.id })} className="flex-1 rounded-lg bg-emerald-50 border border-emerald-100 py-2.5 text-xs font-black text-emerald-600 transition-all active:scale-95 hover:bg-emerald-100">قبول</button>
+                <button onClick={() => setIsRejecting(true)} className="flex-1 rounded-lg bg-red-50 border border-red-100 py-2.5 text-xs font-black text-red-600 transition-all active:scale-95 hover:bg-red-100">رفض</button>
               </div>
             )}
           </div>
+        )}
+
+        {selectedOrder && isRejecting && (
+           <div className="space-y-4 pt-2">
+             <p className="text-sm text-gray-600 font-bold">يرجى كتابة سبب الرفض (اختياري)</p>
+             <input placeholder="السبب" value={rejReason} onChange={e => setRejReason(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm font-medium outline-none focus:border-red-500 transition-colors shadow-sm" />
+             <div className="flex gap-2">
+                <button onClick={() => { setIsRejecting(false); runAction({ action: 'reject_order', id: selectedOrder.id, reason: rejReason }); }} className="flex-1 rounded-xl bg-red-50 border border-red-100 py-2.5 text-sm font-black text-red-600 transition-all active:scale-95 hover:bg-red-100">تأكيد الرفض</button>
+                <button onClick={() => setIsRejecting(false)} className="flex-1 rounded-xl bg-gray-50 border border-gray-100 py-2.5 text-sm font-black text-gray-600 transition-all active:scale-95 hover:bg-gray-100">إلغاء</button>
+             </div>
+           </div>
         )}
       </Modal>
       </div>
