@@ -420,12 +420,12 @@ export default function Charge() {
 
           <div className="space-y-6">
             
-            {/* Eye-Catching Platform Selection */}
-            <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/30 p-3 sm:p-4 shadow-sm mx-auto w-fit">
-              <label className="block text-center text-sm font-black text-blue-900 mb-3">
-                {language === 'ar' ? 'اختر نوع المنصة الرئيسية' : 'Choose Main Platform Type'}
+            {/* Platform Selection without box */}
+            <div className="flex flex-col items-center gap-4">
+              <label className="block text-center text-sm font-black text-gray-700">
+                {language === 'ar' ? 'اختر نوع المنصة الرئيسية للحساب :' : 'Choose main platform type for account:'}
               </label>
-              <div className="flex gap-4 justify-center">
+              <div className="flex gap-4 justify-center pt-2">
                 {["facebook", "gmail"].map((p) => (
                   <button
                     key={p}
