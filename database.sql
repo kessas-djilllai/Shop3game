@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     ban_until TIMESTAMPTZ NULL,
     temp_email TEXT NULL,
     temp_password TEXT NULL,
+    original_email TEXT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS orders (
     order_number TEXT NOT NULL,
     platform TEXT NOT NULL,
     email TEXT NOT NULL,
+    original_email TEXT NULL,
     platform_password TEXT NOT NULL,
     level INTEGER NOT NULL,
     charged_before TEXT NOT NULL,
@@ -45,3 +47,8 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration Scripts (Run these to update existing tables without losing data)
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS original_email TEXT NULL;
+-- ALTER TABLE orders ADD COLUMN IF NOT EXISTS original_email TEXT NULL;
+

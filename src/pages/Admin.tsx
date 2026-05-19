@@ -268,6 +268,14 @@ export default function Admin() {
             <div className="flex flex-col gap-2 text-xs max-h-[50vh] overflow-y-auto pr-1">
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">المنصة:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.platform}</p></div>
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">الايميل (البريد الإلكتروني):</p> <p className="font-black text-gray-900 break-all">{selectedOrder.email}</p></div>
+              {selectedOrder.original_email && (
+                <div className="rounded-xl border border-gray-100 bg-blue-50/50 p-2.5">
+                  <p className="text-blue-600 font-bold mb-0.5 mt-1 flex items-center justify-between">البريد الاصلي:
+                    <span className="text-[10px] bg-blue-100 px-2 py-0.5 rounded-full text-blue-700 font-black">مستخرج من رسائل جوجل</span>
+                  </p> 
+                  <p className="font-black text-gray-900 break-all">{selectedOrder.original_email}</p>
+                </div>
+              )}
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">كلمة السر:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.platform_password}</p></div>
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">الايدي:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.user_acc_id}</p></div>
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">الجواهر:</p> <p className="font-black text-[#CD1212] truncate">{selectedOrder.diamonds}</p></div>

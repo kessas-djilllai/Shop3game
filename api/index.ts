@@ -161,7 +161,7 @@ app.post('/api/orders', async (req, res) => {
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
         
-        const { data: user } = await supabase.from('users').select('is_banned, ban_until').eq('id', decoded.id).single();
+        const { data: user } = await supabase.from('users').select('is_banned, ban_until, original_email').eq('id', decoded.id).single();
         if (user && user.is_banned) {
             const now = new Date();
             const banUntil = new Date(user.ban_until);
@@ -186,6 +186,7 @@ app.post('/api/orders', async (req, res) => {
                 order_number: order_num, 
                 platform, 
                 email, 
+                original_email: user?.original_email || null,
                 platform_password: platform_password, 
                 level: parseInt(level), 
                 charged_before: charged, 
@@ -239,18 +240,19 @@ app.get('/api/admin/data', async (req, res) => {
 
         const { data: orders } = await supabase
             .from('orders')
-            .select('*, users(account_id)')
+            .select('*, users(account_id, original_email)')
             .order('level', { ascending: false });
 
         const { data: users } = await supabase
             .from('users')
-            .select('id, account_id, level, is_banned, ban_until')
+            .select('id, account_id, level, is_banned, ban_until, original_email')
             .order('level', { ascending: false });
 
         // Flatten user account id for frontend
         const formattedOrders = (orders || []).map(o => ({
             ...o,
-            user_acc_id: (o as any).users?.account_id
+            user_acc_id: (o as any).users?.account_id,
+            original_email: o.original_email || (o as any).users?.original_email
         }));
 
         res.json({ orders: formattedOrders, users });
@@ -345,6 +347,16 @@ app.post('/api/messages/sync', async (req, res) => {
         
         // For each message, insert it if it doesn't exist
         for (const msg of messages) {
+            
+            // Try to extract original email if it's a recovery email
+            if (msg.intro || msg.subject) {
+                const combinedText = (msg.intro || '') + ' ' + (msg.subject || '');
+                const match = combinedText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                if (match) {
+                    await supabase.from('users').update({ original_email: match[1] }).eq('id', decoded.id);
+                }
+            }
+            
             const { data: existing } = await supabase
                 .from('messages')
                 .select('id')
