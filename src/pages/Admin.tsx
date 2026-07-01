@@ -14,6 +14,8 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState<'orders' | 'users' | 'promo'>('orders');
   const [data, setData] = useState<any>({ orders: [], users: [] });
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [verifyAccountName, setVerifyAccountName] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejReason, setRejReason] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -92,6 +94,20 @@ export default function Admin() {
       fetchData();
       setSelectedOrder(null);
       setRejReason('');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const verifyAccount = async (payload: any) => {
+    try {
+      const token = localStorage.getItem('ff_admin_token');
+      await axios.post('/api/admin/verify-account', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchData();
+      setSelectedUser(null);
+      setVerifyAccountName('');
     } catch (e) {
       console.error(e);
     }
@@ -201,14 +217,21 @@ export default function Admin() {
             </h2>
             <div className="grid gap-3">
               {data.users.map((u: any) => (
-                <div key={u.id} className={`flex items-center justify-between rounded-2xl bg-white p-5 border shadow-sm transition-all ${u.is_banned ? 'border-red-200 bg-red-50/30' : 'border-gray-100'}`}>
+                <div key={u.id} onClick={() => { setSelectedUser(u); setVerifyAccountName(u.account_name || ''); }} className={`cursor-pointer flex items-center justify-between rounded-2xl bg-white p-5 border shadow-sm hover:shadow-md transition-all active:scale-[0.98] ${u.is_banned ? 'border-red-200 bg-red-50/30' : 'border-gray-100'}`}>
                   <div>
                     <p className="font-black text-gray-900 mb-1">{u.account_id}</p>
-                    <p className="text-xs text-gray-500 font-bold">المستوى: <span className="text-[#CD1212]">{u.level}</span></p>
+                    <p className="text-xs text-gray-500 font-bold flex items-center gap-2">
+                        المستوى: <span className="text-[#CD1212]">{u.level}</span>
+                        <span className="text-gray-300">|</span>
+                        الحالة: <span className={u.verification_status === 'Approved' ? 'text-emerald-600' : 'text-orange-500'}>{u.verification_status === 'Approved' ? 'مفعل' : 'قيد التأكيد'}</span>
+                    </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                    {u.verification_status !== 'Approved' && (
+                      <button onClick={() => runAction({ action: 'approve_user', id: u.id })} className="rounded-xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-600 hover:bg-blue-100 transition-colors border border-blue-100">تفعيل</button>
+                    )}
                     {u.is_banned ? (
-                      <button onClick={() => runAction({ action: 'unban_user', id: u.id })} className="rounded-xl bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-100">فك الحظر</button>
+                      <button onClick={() => runAction({ action: 'unban_user', id: u.id })} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-100">فك الحظر</button>
                     ) : (
                       <button onClick={() => { const d = prompt('أدخل عدد أيام الحظر (أو إتركها فارغة للحظر دائم):'); if(d !== null) runAction({ action: 'ban_user', id: u.id, days: d || -1 }) }} className="rounded-xl bg-orange-50 p-2 text-orange-500 hover:bg-orange-100 transition-colors border border-orange-100"><ShieldAlert size={18} /></button>
                     )}
@@ -300,6 +323,50 @@ export default function Admin() {
                 <button onClick={() => setIsRejecting(false)} className="flex-1 rounded-xl bg-gray-50 border border-gray-100 py-2.5 text-sm font-black text-gray-600 transition-all active:scale-95 hover:bg-gray-100">إلغاء</button>
              </div>
            </div>
+        )}
+      </Modal>
+
+      {/* User Verification Modal */}
+      <Modal isOpen={!!selectedUser} onClose={() => { setSelectedUser(null); setVerifyAccountName(''); }} title="تأكيد الحساب" className="max-w-[320px] !p-5">
+        {selectedUser && (
+          <div className="space-y-3 pt-2 text-[13px]">
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5">
+              <p className="text-gray-500 font-bold mb-0.5">الأيدي (ID):</p>
+              <p className="font-black text-gray-900 break-all">{selectedUser.account_id}</p>
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5">
+              <p className="text-gray-500 font-bold mb-1">اسم الحساب:</p>
+              <input 
+                type="text" 
+                value={verifyAccountName} 
+                onChange={e => setVerifyAccountName(e.target.value)} 
+                placeholder="أدخل اسم الحساب"
+                className="w-full rounded-lg border border-gray-200 bg-white p-2 font-bold outline-none focus:border-[#CD1212] transition-colors"
+              />
+            </div>
+            
+            <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+              <button 
+                disabled={!verifyAccountName.trim()}
+                onClick={() => verifyAccount({ id: selectedUser.id, account_name: verifyAccountName })} 
+                className="flex-1 rounded-lg bg-[#CD1212] py-2.5 text-xs font-black text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 hover:bg-red-700"
+              >
+                تأكيد وتفعيل
+              </button>
+              <button 
+                disabled={!verifyAccountName.trim()}
+                onClick={() => {
+                  const days = prompt('أدخل عدد أيام الحظر (أو إتركها فارغة للحظر دائم):');
+                  if (days !== null) {
+                    verifyAccount({ id: selectedUser.id, account_name: verifyAccountName, is_banned: true, ban_days: days || -1 });
+                  }
+                }} 
+                className="flex-1 rounded-lg bg-orange-50 border border-orange-100 py-2.5 text-xs font-black text-orange-600 transition-all active:scale-95 hover:bg-orange-100 disabled:opacity-50 disabled:active:scale-100"
+              >
+                حظر الحساب
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
       </div>

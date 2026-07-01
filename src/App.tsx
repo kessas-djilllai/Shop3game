@@ -22,6 +22,12 @@ const AuthGuard = ({ children }: { children: ReactNode }) => {
     const checkStatus = () => {
       if (token) {
         axios.get('/api/user/me', { headers: { Authorization: `Bearer ${token}` } })
+          .then(res => {
+            if (res.data?.user) {
+              const current = JSON.parse(localStorage.getItem('ff_user') || '{}');
+              localStorage.setItem('ff_user', JSON.stringify({ ...current, ...res.data.user }));
+            }
+          })
           .catch(err => {
             if (err.response?.status === 403 && err.response?.data?.status === 'banned') {
               setBanInfo({ isOpen: true, msg: err.response.data.message });

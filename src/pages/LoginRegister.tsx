@@ -12,6 +12,7 @@ export default function LoginRegister() {
   const [isLogin, setIsLogin] = useState(true);
   const [accountId, setAccountId] = useState('');
   const [password, setPassword] = useState('');
+  const [level, setLevel] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,8 +28,13 @@ export default function LoginRegister() {
   }, [navigate]);
 
   const handleAuth = async () => {
-    if (!accountId || !password) {
+    if (!accountId || !password || (!isLogin && !level)) {
       setError(t('fill_required_data') || 'يرجى ملأ جميع الحقول');
+      return;
+    }
+    
+    if (!isLogin && isNaN(Number(level))) {
+      setError(language === 'ar' ? 'المستوى يجب أن يكون رقماً' : 'Level must be a number');
       return;
     }
     
@@ -63,7 +69,9 @@ export default function LoginRegister() {
     
     try {
       const endpoint = isLogin ? '/api/login' : '/api/register';
-      const res = await axios.post(endpoint, { account_id: accountId, password });
+      const reqBody: any = { account_id: accountId, password };
+      if (!isLogin) reqBody.level = level;
+      const res = await axios.post(endpoint, reqBody);
       
       localStorage.setItem('ff_token', res.data.token);
       localStorage.setItem('ff_user', JSON.stringify(res.data.user));
@@ -152,6 +160,19 @@ export default function LoginRegister() {
                 </button>
               </div>
             </div>
+
+            {!isLogin && (
+              <div>
+                <label className="mb-1.5 block text-sm font-bold text-gray-700">{language === 'ar' ? 'المستوى' : 'Level'}</label>
+                <input 
+                  type="text" 
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
+                  placeholder={language === 'ar' ? "يرجى إدخال مستوى حسابك" : "Please enter your account level"}
+                />
+              </div>
+            )}
 
             {error && <p className="text-center text-sm font-bold text-red-500">{error}</p>}
 

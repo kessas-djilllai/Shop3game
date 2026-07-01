@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowRight, User, LogOut, Calendar, ShieldCheck } from 'lucide-react';
+import axios from 'axios';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function Account() {
@@ -12,6 +13,18 @@ export default function Account() {
   useEffect(() => {
     const savedUser = localStorage.getItem('ff_user');
     if (savedUser) setUser(JSON.parse(savedUser));
+    
+    const token = localStorage.getItem('ff_token');
+    if (token) {
+        axios.get('/api/user/me', { headers: { Authorization: `Bearer ${token}` } })
+            .then(res => {
+                if (res.data?.user) {
+                    setUser((prev: any) => ({ ...prev, ...res.data.user }));
+                    localStorage.setItem('ff_user', JSON.stringify({ ...JSON.parse(savedUser || '{}'), ...res.data.user }));
+                }
+            })
+            .catch(err => console.error("Failed to fetch user data in profile", err));
+    }
   }, []);
 
   const logout = () => {
@@ -47,7 +60,19 @@ export default function Account() {
                 <Calendar className={`h-4 w-4 text-[#CD1212] ${language === 'ar' ? 'ml-2' : 'mr-2'}`} />
                 {t('account_status')}
               </div>
-              <span className="font-bold text-emerald-600 text-sm">{t('active')}</span>
+              <span className={`font-bold text-sm ${user?.verification_status === 'Approved' ? 'text-emerald-600' : 'text-orange-500'}`}>
+                {user?.verification_status === 'Approved' 
+                  ? t('active') 
+                  : (language === 'ar' ? 'قيد التأكيد' : 'Pending Approval')}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 p-4">
+              <div className="flex items-center font-bold text-gray-600 text-sm">
+                <ShieldCheck className={`h-4 w-4 text-[#CD1212] ${language === 'ar' ? 'ml-2' : 'mr-2'}`} />
+                {language === 'ar' ? 'مستوى الحساب' : 'Account Level'}
+              </div>
+              <span className="font-bold text-gray-900 text-sm">{user?.level || 0}</span>
             </div>
           </div>
 

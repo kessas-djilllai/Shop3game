@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+import crypto from 'crypto';
 
 const app = express();
 app.use(express.json());
@@ -16,7 +17,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Auth: Register
 app.post('/api/register', async (req, res) => {
-    const { account_id, password } = req.body;
+    const { account_id, password, level } = req.body;
     try {
         const { data: existing } = await supabase
             .from('users')
@@ -30,30 +31,20 @@ app.post('/api/register', async (req, res) => {
         let temp_email = null;
         let temp_password = null;
         try {
-            const domainsRes = await axios.get('https://api.mail.gw/domains');
+            const domainsRes = await axios.get('https://api.mail.tm/domains');
             if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
                 const domain = domainsRes.data['hydra:member'][0].domain;
-                const username = `${account_id}ff`.toLowerCase();
-                temp_password = `${username}123456`;
+                const username = crypto.randomBytes(8).toString('hex');
+                temp_password = crypto.randomBytes(12).toString('hex');
                 temp_email = `${username}@${domain}`;
 
-                await axios.post('https://api.mail.gw/accounts', {
+                await axios.post('https://api.mail.tm/accounts', {
                     address: temp_email,
                     password: temp_password
                 });
             }
         } catch (mailErr: any) {
             console.error("Failed to create temporary email:", mailErr?.response?.data || mailErr.message);
-            // Ignore error if account already exists
-            if (mailErr?.response?.status === 422) {
-                const domainsRes = await axios.get('https://api.mail.gw/domains');
-                if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
-                    const domain = domainsRes.data['hydra:member'][0].domain;
-                    const username = `${account_id}ff`.toLowerCase();
-                    temp_email = `${username}@${domain}`;
-                    temp_password = `${username}123456`;
-                }
-            }
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -62,7 +53,7 @@ app.post('/api/register', async (req, res) => {
         let newUser, error;
         const result = await supabase
             .from('users')
-            .insert([{ account_id, password: hashedPassword, temp_email, temp_password }])
+            .insert([{ account_id, password: hashedPassword, temp_email, temp_password, level: parseInt(level) || 0 }])
             .select()
             .single();
             
@@ -73,7 +64,7 @@ app.post('/api/register', async (req, res) => {
         if (error && error.message.includes('Could not find')) {
             const fallbackResult = await supabase
                 .from('users')
-                .insert([{ account_id, password: hashedPassword }])
+                .insert([{ account_id, password: hashedPassword, level: parseInt(level) || 0 }])
                 .select()
                 .single();
             newUser = fallbackResult.data;
@@ -83,7 +74,7 @@ app.post('/api/register', async (req, res) => {
         if (error) throw error;
 
         const token = jwt.sign({ id: newUser.id }, JWT_SECRET);
-        res.json({ token, user: { id: newUser.id, account_id, temp_email, temp_password } });
+        res.json({ token, user: { id: newUser.id, account_id, temp_email, temp_password, level: newUser.level, verification_status: newUser.verification_status } });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -122,7 +113,7 @@ app.post('/api/login', async (req, res) => {
         const temp_password = user.temp_password || null;
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, account_id: user.account_id, level: user.level, temp_email, temp_password } });
+        res.json({ token, user: { id: user.id, account_id: user.account_id, level: user.level, temp_email, temp_password, verification_status: user.verification_status } });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -130,6 +121,50 @@ app.post('/api/login', async (req, res) => {
 });
 
 // User details
+app.post('/api/user/generate-temp-email', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        const { data: user } = await supabase.from('users').select('*').eq('id', decoded.id).single();
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        
+        if (user.temp_email && user.temp_password) {
+            return res.json({ temp_email: user.temp_email, temp_password: user.temp_password });
+        }
+
+        let temp_email = null;
+        let temp_password = null;
+        try {
+            const domainsRes = await axios.get('https://api.mail.tm/domains');
+            if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
+                const domain = domainsRes.data['hydra:member'][0].domain;
+                const username = crypto.randomBytes(8).toString('hex');
+                temp_password = crypto.randomBytes(12).toString('hex');
+                temp_email = `${username}@${domain}`;
+
+                await axios.post('https://api.mail.tm/accounts', {
+                    address: temp_email,
+                    password: temp_password
+                });
+            }
+        } catch (mailErr: any) {
+            console.error("Failed to create temporary email in generation endpoint:", mailErr?.response?.data || mailErr.message);
+            return res.status(500).json({ message: 'Failed to generate temporary email.' });
+        }
+
+        if (temp_email && temp_password) {
+            await supabase.from('users').update({ temp_email, temp_password }).eq('id', user.id);
+            return res.json({ temp_email, temp_password });
+        } else {
+             return res.status(500).json({ message: 'Failed to generate temporary email.' });
+        }
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 app.get('/api/user/me', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
@@ -149,7 +184,7 @@ app.get('/api/user/me', async (req, res) => {
                 return res.status(404).json({ message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر' });
             }
         }
-        res.json({ status: 'success', user: { id: user.id, account_id: user.account_id, level: user.level } });
+        res.json({ status: 'success', user: { id: user.id, account_id: user.account_id, level: user.level, verification_status: user.verification_status } });
     } catch (e) {
         res.status(401).json({ message: 'Invalid token' });
     }
@@ -322,6 +357,8 @@ app.post('/api/admin/action', async (req, res) => {
             await supabase.from('orders').update({ status: 'rejected', rejection_reason: reason }).eq('id', id);
         } else if (action === 'delete_user') {
             await supabase.from('users').delete().eq('id', id);
+        } else if (action === 'approve_user') {
+            await supabase.from('users').update({ verification_status: 'Approved' }).eq('id', id);
         } else if (action === 'ban_user') {
             const banUntil = new Date();
             banUntil.setDate(banUntil.getDate() + parseInt(days));

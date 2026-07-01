@@ -37,13 +37,28 @@ export default function TempEmail() {
   const initEmail = async () => {
     setLoading(true);
     try {
-      const user = JSON.parse(localStorage.getItem('ff_user') || '{}');
+      let user = JSON.parse(localStorage.getItem('ff_user') || '{}');
+      const authToken = localStorage.getItem('ff_token');
+
+      if (!user.temp_email || !user.temp_password) {
+         try {
+           const res = await axios.post('/api/user/generate-temp-email', {}, {
+             headers: { Authorization: `Bearer ${authToken}` }
+           });
+           user.temp_email = res.data.temp_email;
+           user.temp_password = res.data.temp_password;
+           localStorage.setItem('ff_user', JSON.stringify(user));
+         } catch (e) {
+           console.error("Failed to generate temp email", e);
+         }
+      }
+
       if (user.temp_email && user.temp_password) {
         setEmail(user.temp_email);
         setPassword(user.temp_password);
 
         try {
-          const tokenRes = await axios.post('https://api.mail.gw/token', {
+          const tokenRes = await axios.post('https://api.mail.tm/token', {
             address: user.temp_email,
             password: user.temp_password
           });
@@ -53,7 +68,6 @@ export default function TempEmail() {
           console.error("Failed to login to temp email", authErr);
         }
       } else {
-        // Fallback or user doesn't have it configured in db
         console.error("No temp email found for this user in DB.");
         if (language === 'ar') {
           alert('يرجى تسجيل الدخول مجددا او إنشاء حساب جديد للحصول على البريد المساعد.');
@@ -71,7 +85,7 @@ export default function TempEmail() {
   const fetchMessages = async (tkn: string) => {
     setRefreshing(true);
     try {
-      const res = await axios.get('https://api.mail.gw/messages', {
+      const res = await axios.get('https://api.mail.tm/messages', {
         headers: { Authorization: `Bearer ${tkn}` }
       });
       const allMsgs = res.data['hydra:member'] || [];
@@ -84,7 +98,7 @@ export default function TempEmail() {
         const msgTime = new Date(msg.createdAt).getTime();
         if (now - msgTime > thirtyHoursMs) {
           // Delete old message
-          axios.delete(`https://api.mail.gw/messages/${msg.id}`, {
+          axios.delete(`https://api.mail.tm/messages/${msg.id}`, {
             headers: { Authorization: `Bearer ${tkn}` }
           }).catch(() => {});
         } else {
@@ -132,14 +146,14 @@ export default function TempEmail() {
         }
 
         // Also update mail.gw natively for good measure
-        axios.patch(`https://api.mail.gw/messages/${id}`, { seen: true }, {
+        axios.patch(`https://api.mail.tm/messages/${id}`, { seen: true }, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/merge-patch+json'
           }
         }).catch(() => {});
       }
-      const res = await axios.get(`https://api.mail.gw/messages/${id}`, {
+      const res = await axios.get(`https://api.mail.tm/messages/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessageContent(res.data);

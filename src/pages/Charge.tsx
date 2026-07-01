@@ -44,7 +44,23 @@ export default function Charge() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const [termsModal, setTermsModal] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<string>('');
+
   useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const token = localStorage.getItem('ff_token');
+        if (!token) return;
+        const res = await axios.get('/api/account/status', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setAccountStatus(res.data.status);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    checkStatus();
+    
     const termsAccepted = localStorage.getItem('ff_terms_accepted');
     if (!termsAccepted) {
       setTermsModal(true);
@@ -78,6 +94,15 @@ export default function Charge() {
 
   const handleStart = () => {
     addUserMessage(language === 'ar' ? 'البدء' : 'Start');
+    
+    if (accountStatus === 'Pending') {
+      addAiMessage(
+        language === 'ar' ? 'عذراً، لا يمكنك بدء عملية الشحن حالياً لأن حسابك لا يزال قيد التأكيد من طرف الإدارة.' : 'Sorry, you cannot start the recharge process right now because your account is pending confirmation by the administration.',
+        'done'
+      );
+      return;
+    }
+    
     addAiMessage(
       language === 'ar' ? 'رائع! دعنا نبدأ. كم عدد الجواهر أو نوع العرض الذي تريد شحنه؟' : 'Great! Let\'s begin. How many diamonds or what package do you want?', 
       'diamonds'
@@ -138,13 +163,12 @@ export default function Charge() {
       const token = localStorage.getItem("ff_token");
       const res = await axios.post("/api/orders", {
         token,
-        platform: "ID",
-        email: loggedInUser?.temp_email || "test@test.com",
-        platform_password: "N/A",
-        level: "N/A",
-        charged: "N/A",
+        platform: "Player ID",
+        email: finalId,
+        platform_password: "",
+        level: "0",
+        charged: "لا",
         diamonds: formData.diamonds,
-        account_id: finalId
       });
       
       const orderNum = res.data.order_number;
