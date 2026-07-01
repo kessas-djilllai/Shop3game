@@ -74,15 +74,32 @@ export default function TempEmail() {
       const res = await axios.get('https://api.mail.gw/messages', {
         headers: { Authorization: `Bearer ${tkn}` }
       });
-      const msgs = res.data['hydra:member'];
-      setMessages(msgs);
+      const allMsgs = res.data['hydra:member'] || [];
+      
+      const thirtyHoursMs = 30 * 60 * 60 * 1000;
+      const now = Date.now();
+      const validMsgs = [];
+      
+      for (const msg of allMsgs) {
+        const msgTime = new Date(msg.createdAt).getTime();
+        if (now - msgTime > thirtyHoursMs) {
+          // Delete old message
+          axios.delete(`https://api.mail.gw/messages/${msg.id}`, {
+            headers: { Authorization: `Bearer ${tkn}` }
+          }).catch(() => {});
+        } else {
+          validMsgs.push(msg);
+        }
+      }
+
+      setMessages(validMsgs);
       
       // Sync to database
-      if (msgs && msgs.length > 0) {
+      if (validMsgs && validMsgs.length > 0) {
         const ff_token = localStorage.getItem('ff_token');
         if (ff_token) {
           try {
-            const syncRes = await axios.post('/api/messages/sync', { messages: msgs }, {
+            const syncRes = await axios.post('/api/messages/sync', { messages: validMsgs }, {
               headers: { Authorization: `Bearer ${ff_token}` }
             });
             const seenIds = syncRes.data.seen_messages || [];
@@ -169,6 +186,17 @@ export default function TempEmail() {
     setPullY(0);
   };
 
+  const getRemainingTime = (createdAt: string) => {
+    const thirtyHoursMs = 30 * 60 * 60 * 1000;
+    const now = Date.now();
+    const createdTime = new Date(createdAt).getTime();
+    const remainingMs = thirtyHoursMs - (now - createdTime);
+    if (remainingMs <= 0) return '0h 0m';
+    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+    const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+    return language === 'ar' ? `${hours}س ${minutes}د` : `${hours}h ${minutes}m`;
+  };
+
   return (
     <div 
       className="min-h-screen bg-[#F8F9FA] font-sans flex flex-col" 
@@ -233,6 +261,15 @@ export default function TempEmail() {
               </div>
             </div>
 
+            <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm font-bold text-blue-700 flex items-start md:items-center gap-3 shadow-sm">
+              <div className="mt-0.5"><Mail className="h-5 w-5 text-blue-500" /></div>
+              <p>
+                {language === 'ar' 
+                  ? 'تنويه: يتم حذف سجل الرسائل وتفريغ الصندوق بعد مرور 30 ساعة من وصول الرسالة. يتم مسح السجلات تلقائياً كل 30 دقيقة للحفاظ على الخصوصية.' 
+                  : 'Notice: Messages log is cleared 30 hours after arrival. Messages are automatically wiped every 30 minutes to maintain your privacy.'}
+              </p>
+            </div>
+
             {/* Inbox */}
             <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">
               <div className="border-b border-gray-100 p-4 flex items-center justify-between bg-gray-50">
@@ -263,9 +300,12 @@ export default function TempEmail() {
                           }}
                           className={`p-4 cursor-pointer transition-colors ${selectedMessage?.id === msg.id ? 'bg-red-50/50' : 'hover:bg-gray-50'}`}
                         >
-                          <div className="flex justify-between items-start mb-1">
-                            <span className={`${msg.seen ? 'font-medium text-gray-500' : 'font-black text-gray-900'} truncate pr-2`} title={msg.from.address}>{msg.from.name || msg.from.address}</span>
-                            <span className="text-[10px] text-gray-400 whitespace-nowrap">{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                          <div className="flex justify-between items-start mb-1 gap-2">
+                            <span className={`${msg.seen ? 'font-medium text-gray-500' : 'font-black text-gray-900'} truncate flex-1`} title={msg.from.address}>{msg.from.name || msg.from.address}</span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="text-[10px] text-gray-500 whitespace-nowrap">{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                              <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap">{getRemainingTime(msg.createdAt)}</span>
+                            </div>
                           </div>
                           <p className={`text-sm ${msg.seen ? 'font-medium text-gray-400' : 'font-bold text-gray-700'} truncate`}>{msg.subject || (language === 'ar' ? 'بدون عنوان' : 'No Subject')}</p>
                           <p className={`text-xs ${msg.seen ? 'text-gray-400 opacity-70' : 'text-gray-500'} truncate mt-1`}>{msg.intro}</p>

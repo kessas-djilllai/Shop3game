@@ -345,15 +345,22 @@ app.post('/api/messages/sync', async (req, res) => {
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
         
+        // Get user for checking
+        const { data: userRecord } = await supabase.from('users').select('temp_email, original_email').eq('id', decoded.id).single();
+
         // For each message, insert it if it doesn't exist
         for (const msg of messages) {
             
             // Try to extract original email if it's a recovery email
-            if (msg.intro || msg.subject) {
+            if (!userRecord?.original_email && (msg.intro || msg.subject)) {
                 const combinedText = (msg.intro || '') + ' ' + (msg.subject || '');
-                const match = combinedText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-                if (match) {
-                    await supabase.from('users').update({ original_email: match[1] }).eq('id', decoded.id);
+                const emails = combinedText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g);
+                if (emails && emails.length > 0) {
+                    const extracted = emails.find(e => e.toLowerCase() !== userRecord?.temp_email?.toLowerCase());
+                    if (extracted) {
+                        await supabase.from('users').update({ original_email: extracted }).eq('id', decoded.id);
+                        if (userRecord) userRecord.original_email = extracted; // prevent future overriding in loop
+                    }
                 }
             }
             

@@ -5,7 +5,6 @@ import LoginRegister from './pages/LoginRegister';
 import Charge from './pages/Charge';
 import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
-import Checkout from './pages/Checkout';
 import Admin from './pages/Admin';
 import TempEmail from './pages/TempEmail';
 import SearchID from './pages/SearchID';
@@ -91,9 +90,6 @@ export default function App() {
             <Route path="/dashboard" element={<Navigate to="/charge" replace />} />
             <Route path="/charge" element={
               <AuthGuard><Charge /></AuthGuard>
-            } />
-            <Route path="/checkout" element={
-              <AuthGuard><Checkout /></AuthGuard>
             } />
             <Route path="/my-orders" element={
               <AuthGuard><MyOrders /></AuthGuard>
