@@ -36,12 +36,6 @@ export default function MyOrders() {
   return (
     <div className="min-h-screen w-full relative bg-[#F8F9FA] p-4 md:p-8 font-sans pb-28" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <div className="relative z-10 mx-auto max-w-lg pt-4">
-        <div className="mb-8 flex items-center gap-4">
-          <button onClick={() => navigate('/charge')} className="rounded-xl bg-white border border-gray-100 p-3 shadow-sm transition-all hover:bg-gray-50 active:scale-95">
-            <ArrowRight className={`h-5 w-5 text-gray-700 ${language === 'ar' ? '' : 'rotate-180'}`} />
-          </button>
-          <h1 className="text-2xl font-black text-gray-900">{t('my_orders')}</h1>
-        </div>
 
         {loading ? (
           <div className="py-20 text-center text-gray-400 font-bold">{t('loading')}</div>

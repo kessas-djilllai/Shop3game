@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'motion/react';
 import { Search, Trash2, ShieldAlert, CheckCircle, XCircle, Clock, Menu, X, Filter, LogOut, ArrowRight, User } from 'lucide-react';
 import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
@@ -147,29 +146,26 @@ export default function Admin() {
         </div>
 
       {/* Sidebar */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 300, opacity: 0 }} className="fixed bottom-0 right-0 top-0 z-[110] w-72 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-              <div className="mb-12 flex items-center justify-between">
-                <h3 className="text-xl font-black text-gray-900">القائمة</h3>
-                <button onClick={() => setIsSidebarOpen(false)} className="rounded-xl bg-gray-50 p-2 hover:bg-gray-100 transition-colors border border-gray-100"><X className="text-gray-500 h-5 w-5" /></button>
-              </div>
-              <div className="space-y-3">
-                <button onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'orders' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>قسم الطلبات</button>
-                <button onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'users' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>إدارة الحسابات</button>
-                <button onClick={() => { setActiveTab('promo'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'promo' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>كود التخفيض</button>
-                <button onClick={() => navigate('/search-id')} className={`w-full rounded-xl p-4 text-right font-bold transition-all bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100 flex items-center justify-between`}><span>بحث بالايدي</span><Search className="h-5 w-5 text-gray-400" /></button>
-              </div>
-              <button onClick={() => { localStorage.removeItem('ff_admin_token'); setIsAdmin(false); }} className="absolute bottom-8 left-8 right-8 flex items-center justify-center rounded-xl bg-red-50 p-4 font-bold text-[#CD1212] transition-colors hover:bg-red-100 border border-red-100">
-                <LogOut className="ml-2 h-5 w-5 rotate-180" />
-                خروج
-              </button>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {isSidebarOpen && (
+        <>
+          <div onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm" />
+          <div className="fixed bottom-0 right-0 top-0 z-[110] w-72 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+            <div className="mb-12 flex items-center justify-between">
+              <h3 className="text-xl font-black text-gray-900">القائمة</h3>
+              <button onClick={() => setIsSidebarOpen(false)} className="rounded-xl bg-gray-50 p-2 hover:bg-gray-100 transition-colors border border-gray-100"><X className="text-gray-500 h-5 w-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <button onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'orders' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>قسم الطلبات</button>
+              <button onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'users' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>إدارة الحسابات</button>
+              <button onClick={() => { setActiveTab('promo'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'promo' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>كود التخفيض</button>
+            </div>
+            <button onClick={() => { localStorage.removeItem('ff_admin_token'); setIsAdmin(false); }} className="absolute bottom-8 left-8 right-8 flex items-center justify-center rounded-xl bg-red-50 p-4 font-bold text-[#CD1212] transition-colors hover:bg-red-100 border border-red-100">
+              <LogOut className="ml-2 h-5 w-5 rotate-180" />
+              خروج
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Content */}
       <div className="mx-auto max-w-4xl">

@@ -7,7 +7,6 @@ import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
 import Admin from './pages/Admin';
 import TempEmail from './pages/TempEmail';
-import SearchID from './pages/SearchID';
 import { LanguageProvider } from './context/LanguageContext';
 import BottomNavigation from './components/BottomNavigation';
 import './index.css';
@@ -106,9 +105,6 @@ export default function App() {
             } />
             <Route path="/email" element={
               <AuthGuard><TempEmail /></AuthGuard>
-            } />
-            <Route path="/search-id" element={
-              <AuthGuard><SearchID /></AuthGuard>
             } />
             
             <Route path="/admin" element={<Admin />} />

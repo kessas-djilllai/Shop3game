@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { motion } from 'motion/react';
 import { ArrowLeft, Copy, Mail, Globe, RefreshCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
@@ -221,29 +220,14 @@ export default function TempEmail() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <motion.div 
-        className="flex justify-center items-center overflow-hidden bg-[#F8F9FA]"
-        animate={{ height: pullY > 0 ? pullY : 0, opacity: pullY / 80 }}
-        transition={{ type: 'spring', bounce: 0, duration: isDragging ? 0 : 0.3 }}
+      <div 
+        className="flex justify-center items-center overflow-hidden bg-[#F8F9FA] transition-all duration-300"
+        style={{ height: pullY > 0 ? pullY : 0, opacity: pullY / 80 }}
       >
         <div className="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
           <RefreshCcw className={`h-4 w-4 text-red-500 ${refreshing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${pullY * 4}deg)` }} />
         </div>
-      </motion.div>
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-gray-100">
-        <div className="mx-auto flex h-16 max-w-4xl items-center px-4 gap-4">
-          <button 
-            onClick={() => navigate('/charge')}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
-          >
-            <ArrowLeft className={`h-6 w-6 ${language === 'ar' ? 'rotate-180' : ''}`} />
-          </button>
-          <h1 className="text-xl font-black text-gray-800">
-            {language === 'ar' ? 'البريد المساعد' : 'Support Email'}
-          </h1>
-        </div>
-      </header>
+      </div>
 
       <main className="mx-auto max-w-4xl px-4 py-8 space-y-6 flex-1 w-full">
         {loading ? (

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'motion/react';
 import { Eye, EyeOff } from 'lucide-react';
 import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
@@ -91,9 +90,7 @@ export default function LoginRegister() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20 font-sans" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <main className="mx-auto max-w-md px-4 pt-20">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div 
           className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"
         >
           <div className="mb-6 text-center">
@@ -184,7 +181,7 @@ export default function LoginRegister() {
               {isLogin ? t('login') : t('register')}
             </LoaderButton>
           </div>
-        </motion.div>
+        </div>
       </main>
 
       <Modal 

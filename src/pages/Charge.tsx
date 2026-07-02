@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { motion, AnimatePresence } from "motion/react";
 import { Bot, User, Send, ShieldCheck, CheckCircle2, Menu, LogOut, Loader2, Sparkles, AlertTriangle, ClipboardList, Search, ShieldAlert, Facebook, Instagram, Mail, X, Check, ArrowLeft } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import Modal from "../components/Modal";
@@ -311,51 +310,44 @@ export default function Charge() {
       {/* Main Chat Area */}
       <main className="flex-1 flex flex-col w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-32">
         <div className="flex-1 space-y-6">
-          <AnimatePresence>
-            {messages.map((msg, index) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {msg.sender === 'ai' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#CD1212] to-red-700 flex items-center justify-center shadow-md mt-1">
-                    <Bot className="h-4 w-4 text-white" />
-                  </div>
-                )}
-                
-                <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-5 py-3.5 text-sm sm:text-base font-medium leading-relaxed whitespace-pre-line ${
-                  msg.sender === 'user' 
-                    ? 'bg-[#CD1212] text-white rounded-tl-none shadow-md shadow-red-600/10' 
-                    : msg.type === 'processing' 
-                      ? 'bg-blue-50 text-blue-800 border border-blue-100 shadow-sm rounded-tr-none'
-                    : msg.type === 'done'
-                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-100 shadow-sm rounded-tr-none'
-                    : 'bg-white text-gray-800 border border-gray-100 shadow-sm rounded-tr-none'
-                }`}>
-                  {msg.text}
-                  {msg.sender === 'ai' && msg.id === messages[messages.length - 1]?.id && (
-                    <div className="mt-2">
-                      {renderOptions()}
-                    </div>
-                  )}
+          {messages.map((msg, index) => (
+            <div
+              key={msg.id}
+              className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {msg.sender === 'ai' && (
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#CD1212] to-red-700 flex items-center justify-center shadow-md mt-1">
+                  <Bot className="h-4 w-4 text-white" />
                 </div>
-
-                {msg.sender === 'user' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mt-1">
-                    <User className="h-4 w-4 text-gray-500" />
+              )}
+              
+              <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-5 py-3.5 text-sm sm:text-base font-medium leading-relaxed whitespace-pre-line ${
+                msg.sender === 'user' 
+                  ? 'bg-[#CD1212] text-white rounded-tl-none shadow-md shadow-red-600/10' 
+                  : msg.type === 'processing' 
+                    ? 'bg-blue-50 text-blue-800 border border-blue-100 shadow-sm rounded-tr-none'
+                  : msg.type === 'done'
+                    ? 'bg-emerald-50 text-emerald-900 border border-emerald-100 shadow-sm rounded-tr-none'
+                  : 'bg-white text-gray-800 border border-gray-100 shadow-sm rounded-tr-none'
+              }`}>
+                {msg.text}
+                {msg.sender === 'ai' && msg.id === messages[messages.length - 1]?.id && (
+                  <div className="mt-2">
+                    {renderOptions()}
                   </div>
                 )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
+              </div>
+
+              {msg.sender === 'user' && (
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mt-1">
+                  <User className="h-4 w-4 text-gray-500" />
+                </div>
+              )}
+            </div>
+          ))}
           
           {isTyping && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+            <div
               className="flex gap-3 justify-start"
             >
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#CD1212] to-red-700 flex items-center justify-center shadow-md mt-1">
@@ -366,7 +358,7 @@ export default function Charge() {
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }}></div>
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }}></div>
               </div>
-            </motion.div>
+            </div>
           )}
           
           <div ref={messagesEndRef} />
@@ -374,41 +366,36 @@ export default function Charge() {
       </main>
 
       {/* Input Area */}
-      <AnimatePresence>
-        {showInput && !isTyping && (
-          <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-30"
-          >
-            <div className="max-w-3xl mx-auto flex gap-2">
-              <input
-                type={inputType}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    if (currentMessageType === 'ask_id') handleIdSubmit();
-                  }
-                }}
-                placeholder={language === 'ar' ? 'أدخل الأيدي الخاص بك...' : 'Enter your ID...'}
-                dir="ltr"
-                className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm font-bold text-gray-900 outline-none transition-all focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 text-left"
-              />
-              <button
-                onClick={() => {
+      {showInput && !isTyping && (
+        <div 
+          className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-30"
+        >
+          <div className="max-w-3xl mx-auto flex gap-2">
+            <input
+              type={inputType}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
                   if (currentMessageType === 'ask_id') handleIdSubmit();
-                }}
-                disabled={!inputText.trim()}
-                className="flex items-center justify-center rounded-xl bg-[#CD1212] px-5 text-white transition-all hover:bg-red-700 active:scale-95 disabled:bg-gray-300 disabled:opacity-50"
-              >
-                <Send className={`h-5 w-5 ${language === 'ar' ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                }
+              }}
+              placeholder={language === 'ar' ? 'أدخل الأيدي الخاص بك...' : 'Enter your ID...'}
+              dir="ltr"
+              className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm font-bold text-gray-900 outline-none transition-all focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 text-left"
+            />
+            <button
+              onClick={() => {
+                if (currentMessageType === 'ask_id') handleIdSubmit();
+              }}
+              disabled={!inputText.trim()}
+              className="flex items-center justify-center rounded-xl bg-[#CD1212] px-5 text-white transition-all hover:bg-red-700 active:scale-95 disabled:bg-gray-300 disabled:opacity-50"
+            >
+              <Send className={`h-5 w-5 ${language === 'ar' ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <Modal 
         isOpen={termsModal} 

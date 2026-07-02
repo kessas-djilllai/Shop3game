@@ -1,4 +1,3 @@
-import { motion } from 'motion/react';
 import React from 'react';
 import { cn } from '../lib/utils';
 
@@ -31,10 +30,8 @@ export default function LoaderButton({
     >
       {isLoading ? (
         <>
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-            className="h-6 w-6 rounded-full border-2 border-white border-b-transparent"
+          <div
+            className="h-6 w-6 rounded-full border-2 border-white border-b-transparent animate-spin"
           />
           {loadingText && <span className="mr-3">{loadingText}</span>}
         </>
