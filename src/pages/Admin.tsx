@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Search, Trash2, ShieldAlert, CheckCircle, XCircle, Clock, Menu, X, Filter, LogOut, ArrowRight, User } from 'lucide-react';
+import { Search, Trash2, ShieldAlert, CheckCircle, XCircle, Clock, Menu, X, Filter, LogOut, ArrowRight, User, ClipboardList, Sparkles } from 'lucide-react';
 import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
 
@@ -114,18 +114,54 @@ export default function Admin() {
     }
   };
 
+  const totalOrders = data.orders?.length || 0;
+  const pendingOrders = data.orders?.filter((o: any) => o.status === 'pending').length || 0;
+  const totalUsers = data.users?.length || 0;
+  const pendingUsers = data.users?.filter((u: any) => u.verification_status !== 'Approved' || u.level_status !== 'Approved' || u.linking_status !== 'Approved').length || 0;
+
   if (!isAdmin) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4 bg-[#F8F9FA]" dir="rtl">
-        <div className="w-full max-w-sm rounded-[30px] border border-gray-100 bg-white p-8 shadow-xl">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full border-4 border-red-50 bg-[#CD1212] shadow-md">
-            <User className="h-10 w-10 text-white" />
+      <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100" dir="rtl">
+        <div className="w-full max-w-md rounded-[32px] border border-gray-100 bg-white p-8 md:p-10 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 left-0 h-2 bg-gradient-to-l from-[#CD1212] to-red-600" />
+          
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-red-50 text-[#CD1212] shadow-sm">
+            <ShieldAlert className="h-10 w-10" />
           </div>
-          <h1 className="mb-8 text-center text-3xl font-black text-gray-900">لوحة الإدارة</h1>
+          
+          <h1 className="mb-2 text-center text-3xl font-black text-gray-900 tracking-tight">بوابة الإدارة</h1>
+          <p className="text-center text-sm font-bold text-gray-400 mb-8">يرجى إدخال بيانات التحكم الخاصة بك للدخول</p>
+          
           <div className="space-y-4">
-            <input placeholder="اسم المستخدم" value={username} onChange={e => setUsername(e.target.value)} className="w-full rounded-xl border border-gray-100 bg-gray-50 p-4 font-medium outline-none focus:border-[#CD1212] transition-colors" />
-            <input type="password" placeholder="كلمة المرور" value={password} onChange={e => setPassword(e.target.value)} className="w-full rounded-xl border border-gray-100 bg-gray-50 p-4 font-medium outline-none focus:border-[#CD1212] transition-colors" />
-            <LoaderButton isLoading={loading} onClick={handleLogin} className="bg-[#CD1212] text-white shadow-lg shadow-red-600/20 w-full py-4 rounded-xl font-bold text-lg">تسجيل الدخول</LoaderButton>
+            <div>
+              <label className="block text-xs font-black text-gray-500 mb-1.5 mr-1">اسم المستخدم</label>
+              <input 
+                placeholder="أدخل اسم المستخدم" 
+                value={username} 
+                onChange={e => setUsername(e.target.value)} 
+                className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 text-sm font-bold text-gray-900 outline-none focus:border-[#CD1212] focus:bg-white focus:ring-2 focus:ring-red-100 transition-all" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-gray-500 mb-1.5 mr-1">كلمة المرور</label>
+              <input 
+                type="password" 
+                placeholder="أدخل كلمة المرور" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 text-sm font-bold text-gray-900 outline-none focus:border-[#CD1212] focus:bg-white focus:ring-2 focus:ring-red-100 transition-all" 
+              />
+            </div>
+            
+            <div className="pt-2">
+              <LoaderButton 
+                isLoading={loading} 
+                onClick={handleLogin} 
+                className="bg-[#CD1212] text-white shadow-xl shadow-red-600/20 w-full py-4 rounded-2xl font-black text-lg transition-all hover:bg-red-700 active:scale-[0.99]"
+              >
+                تسجيل الدخول الآمن
+              </LoaderButton>
+            </div>
           </div>
         </div>
       </div>
@@ -133,35 +169,122 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen w-full relative bg-[#F8F9FA] p-4 md:p-8 font-sans" dir="rtl">
-      <div className="relative z-10 mx-auto max-w-4xl pt-4">
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/dashboard')} className="rounded-xl bg-white border border-gray-100 p-3 shadow-sm transition-all hover:bg-gray-50 active:scale-95">
-              <ArrowRight className="h-5 w-5 text-gray-700" />
-            </button>
-            <h1 className="text-2xl font-black text-gray-900">لوحة الإدارة</h1>
+    <div className="min-h-screen w-full relative bg-[#F8F9FA] p-4 md:p-8 font-sans pb-32" dir="rtl">
+      <div className="relative z-10 mx-auto max-w-4xl pt-2">
+        {/* Top Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-red-50 text-[#CD1212] flex items-center justify-center border border-red-100">
+              <ShieldAlert className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-gray-900">لوحة تحكم الإدارة</h1>
+              <p className="text-xs font-bold text-gray-400 mt-0.5">تحكم بالطلبات والأعضاء وكود التخفيض</p>
+            </div>
           </div>
-          <button onClick={() => setIsSidebarOpen(true)} className="rounded-xl bg-white border border-gray-100 p-3 text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95"><Menu className="h-5 w-5" /></button>
+          <button 
+            onClick={() => setIsSidebarOpen(true)} 
+            className="rounded-2xl bg-white border border-gray-100 p-3.5 text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Bento Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="rounded-2xl border border-gray-100/80 bg-white p-4 shadow-sm flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-red-50 text-[#CD1212]">
+              <ClipboardList className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-gray-400">إجمالي الطلبات</p>
+              <h3 className="text-xl font-black text-gray-900 mt-0.5">{totalOrders}</h3>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100/80 bg-white p-4 shadow-sm flex items-center gap-3">
+            <div className={`p-3 rounded-xl ${pendingOrders > 0 ? 'bg-orange-50 text-orange-600 animate-pulse' : 'bg-gray-50 text-gray-400'}`}>
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-gray-400">طلبات معلقة</p>
+              <h3 className="text-xl font-black text-gray-900 mt-0.5">{pendingOrders}</h3>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100/80 bg-white p-4 shadow-sm flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-red-50 text-[#CD1212]">
+              <User className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-gray-400">إجمالي الأعضاء</p>
+              <h3 className="text-xl font-black text-gray-900 mt-0.5">{totalUsers}</h3>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100/80 bg-white p-4 shadow-sm flex items-center gap-3">
+            <div className={`p-3 rounded-xl ${pendingUsers > 0 ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'}`}>
+              <CheckCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-gray-400">حسابات معلقة</p>
+              <h3 className="text-xl font-black text-gray-900 mt-0.5">{pendingUsers}</h3>
+            </div>
+          </div>
         </div>
 
       {/* Sidebar */}
       {isSidebarOpen && (
         <>
-          <div onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm" />
-          <div className="fixed bottom-0 right-0 top-0 z-[110] w-72 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-            <div className="mb-12 flex items-center justify-between">
-              <h3 className="text-xl font-black text-gray-900">القائمة</h3>
-              <button onClick={() => setIsSidebarOpen(false)} className="rounded-xl bg-gray-50 p-2 hover:bg-gray-100 transition-colors border border-gray-100"><X className="text-gray-500 h-5 w-5" /></button>
+          <div onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm animate-fade-in" />
+          <div className="fixed bottom-0 right-0 top-0 z-[110] w-72 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex flex-col justify-between">
+            <div>
+              <div className="mb-10 flex items-center justify-between">
+                <h3 className="text-xl font-black text-gray-900">القائمة</h3>
+                <button onClick={() => setIsSidebarOpen(false)} className="rounded-xl bg-gray-50 p-2 hover:bg-gray-100 transition-colors border border-gray-100"><X className="text-gray-500 h-5 w-5" /></button>
+              </div>
+              <div className="space-y-3">
+                <button 
+                  onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} 
+                  className={`w-full rounded-2xl p-4 text-right font-black transition-all border flex items-center justify-between ${
+                    activeTab === 'orders' 
+                      ? 'bg-[#CD1212] text-white border-[#CD1212] shadow-lg shadow-red-600/10' 
+                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-100/80'
+                  }`}
+                >
+                  <span>قسم الطلبات</span>
+                  {pendingOrders > 0 && <span className={`h-2.5 w-2.5 rounded-full ${activeTab === 'orders' ? 'bg-white' : 'bg-[#CD1212]'}`} />}
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} 
+                  className={`w-full rounded-2xl p-4 text-right font-black transition-all border flex items-center justify-between ${
+                    activeTab === 'users' 
+                      ? 'bg-[#CD1212] text-white border-[#CD1212] shadow-lg shadow-red-600/10' 
+                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-100/80'
+                  }`}
+                >
+                  <span>إدارة الحسابات</span>
+                  {pendingUsers > 0 && <span className={`h-2.5 w-2.5 rounded-full ${activeTab === 'users' ? 'bg-white' : 'bg-[#CD1212]'}`} />}
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('promo'); setIsSidebarOpen(false); }} 
+                  className={`w-full rounded-2xl p-4 text-right font-black transition-all border ${
+                    activeTab === 'promo' 
+                      ? 'bg-[#CD1212] text-white border-[#CD1212] shadow-lg shadow-red-600/10' 
+                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-100/80'
+                  }`}
+                >
+                  كود التخفيض
+                </button>
+              </div>
             </div>
-            <div className="space-y-3">
-              <button onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'orders' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>قسم الطلبات</button>
-              <button onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'users' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>إدارة الحسابات</button>
-              <button onClick={() => { setActiveTab('promo'); setIsSidebarOpen(false); }} className={`w-full rounded-xl p-4 text-right font-bold transition-all ${activeTab === 'promo' ? 'bg-[#CD1212] text-white shadow-md shadow-red-600/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'}`}>كود التخفيض</button>
-            </div>
-            <button onClick={() => { localStorage.removeItem('ff_admin_token'); setIsAdmin(false); }} className="absolute bottom-8 left-8 right-8 flex items-center justify-center rounded-xl bg-red-50 p-4 font-bold text-[#CD1212] transition-colors hover:bg-red-100 border border-red-100">
+            
+            <button 
+              onClick={() => { localStorage.removeItem('ff_admin_token'); setIsAdmin(false); }} 
+              className="flex items-center justify-center rounded-2xl bg-red-50 p-4 font-black text-[#CD1212] transition-colors hover:bg-red-100 border border-red-100 w-full animate-fade-in"
+            >
               <LogOut className="ml-2 h-5 w-5 rotate-180" />
-              خروج
+              تسجيل الخروج
             </button>
           </div>
         </>
@@ -170,37 +293,60 @@ export default function Admin() {
       {/* Content */}
       <div className="mx-auto max-w-4xl">
         {activeTab === 'orders' ? (
-          <div className="space-y-4">
-            <h2 className="mb-4 text-gray-500 font-bold px-2 flex items-center gap-2">
-              <Filter className="h-4 w-4" /> 
-              طلبات الشحن
+          <div className="space-y-4 animate-fade-in">
+            <h2 className="mb-2 text-gray-800 font-black px-2 flex items-center gap-2 text-lg">
+              <ClipboardList className="h-5 w-5 text-[#CD1212]" /> 
+              طلبات الشحن الحالية
             </h2>
+            
+            {/* Filter Tabs */}
             <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {['all', 'pending', 'accepted', 'rejected'].map(f => (
                 <button
                   key={f}
                   onClick={() => setOrderFilter(f as any)}
-                  className={`whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full transition-all border ${
-                    orderFilter === f ? 'bg-[#CD1212] text-white border-[#CD1212] shadow-md shadow-red-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200 shadow-sm'
+                  className={`whitespace-nowrap px-5 py-2.5 text-xs font-black rounded-full transition-all border ${
+                    orderFilter === f 
+                      ? 'bg-[#CD1212] text-white border-[#CD1212] shadow-md shadow-red-600/10' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-100 shadow-sm'
                   }`}
                 >
                   {f === 'all' ? 'الكل' : f === 'pending' ? 'قيد الانتظار' : f === 'accepted' ? 'مقبول' : 'مرفوض'}
                 </button>
               ))}
             </div>
+            
             {data.orders.filter((o: any) => orderFilter === 'all' || o.status === orderFilter).length === 0 ? (
-                <div className="rounded-3xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-                    <p className="text-gray-400 font-bold">لا توجد طلبات</p>
+                <div className="rounded-[28px] border border-gray-100 bg-white p-16 text-center shadow-sm">
+                    <ClipboardList className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+                    <p className="text-gray-400 font-bold">لا توجد طلبات شحن في هذا القسم</p>
                 </div>
             ) : null}
+            
             <div className="grid gap-3">
               {data.orders.filter((o: any) => orderFilter === 'all' || o.status === orderFilter).map((o: any) => (
-                <div key={o.id} onClick={() => setSelectedOrder(o)} className="flex cursor-pointer items-center justify-between rounded-2xl bg-white p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+                <div 
+                  key={o.id} 
+                  onClick={() => setSelectedOrder(o)} 
+                  className="flex cursor-pointer items-center justify-between rounded-2xl bg-white p-5 border border-gray-100/80 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 active:scale-[0.99]"
+                >
                   <div>
-                    <p className="font-black text-gray-900 mb-1">{o.user_acc_id}</p>
-                    <p className="text-xs text-gray-500 font-bold">LV: <span className="text-[#CD1212]">{o.level}</span> <span className="mx-2 text-gray-300">|</span> جواهر: <span className="text-emerald-600">{o.diamonds}</span></p>
+                    <p className="font-black text-gray-900 mb-1.5 text-base">{o.user_acc_id}</p>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 font-bold">
+                      <span className="bg-red-50 text-[#CD1212] px-2 py-0.5 rounded-lg text-[10px] font-black">المستوى {o.level}</span>
+                      <span className="text-gray-300">|</span>
+                      <span>جواهر: <span className="text-emerald-600 font-extrabold">{o.diamonds}</span></span>
+                      <span className="text-gray-300">|</span>
+                      <span className="truncate max-w-[120px]">{o.email}</span>
+                    </div>
                   </div>
-                  <div className={`rounded-full px-4 py-1.5 text-[11px] font-black ${o.status === 'pending' ? 'bg-orange-50 text-orange-600 border border-orange-100' : o.status === 'accepted' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                  <div className={`rounded-full px-4 py-1.5 text-[11px] font-black shadow-sm ${
+                    o.status === 'pending' 
+                      ? 'bg-orange-50 text-orange-600 border border-orange-100' 
+                      : o.status === 'accepted' 
+                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                      : 'bg-red-50 text-red-600 border border-red-100'
+                  }`}>
                     {o.status === 'pending' ? 'قيد الانتظار' : o.status === 'accepted' ? 'مقبول' : 'مرفوض'}
                   </div>
                 </div>
@@ -208,9 +354,9 @@ export default function Admin() {
             </div>
           </div>
         ) : activeTab === 'users' ? (
-          <div className="space-y-4">
-            <h2 className="mb-4 text-gray-500 font-bold px-2 flex items-center gap-2">
-              <User className="h-4 w-4" />
+          <div className="space-y-4 animate-fade-in">
+            <h2 className="mb-2 text-gray-800 font-black px-2 flex items-center gap-2 text-lg">
+              <User className="h-5 w-5 text-[#CD1212]" />
               إدارة المستخدمين
             </h2>
             
@@ -224,8 +370,10 @@ export default function Admin() {
                 <button
                   key={f.key}
                   onClick={() => setUserFilter(f.key as any)}
-                  className={`whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full transition-all border ${
-                    userFilter === f.key ? 'bg-[#CD1212] text-white border-[#CD1212] shadow-md shadow-red-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200 shadow-sm'
+                  className={`whitespace-nowrap px-5 py-2.5 text-xs font-black rounded-full transition-all border ${
+                    userFilter === f.key 
+                      ? 'bg-[#CD1212] text-white border-[#CD1212] shadow-md shadow-red-600/10' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-100 shadow-sm'
                   }`}
                 >
                   {f.label}
@@ -249,8 +397,9 @@ export default function Admin() {
 
               if (filteredUsers.length === 0) {
                 return (
-                  <div className="rounded-3xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-                    <p className="text-gray-400 font-bold">لا توجد حسابات في هذا القسم</p>
+                  <div className="rounded-[28px] border border-gray-100 bg-white p-16 text-center shadow-sm">
+                    <User className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+                    <p className="text-gray-400 font-bold">لا توجد حسابات مستخدمين في هذا القسم</p>
                   </div>
                 );
               }
@@ -258,65 +407,62 @@ export default function Admin() {
               return (
                 <div className="grid gap-3">
                   {filteredUsers.map((u: any) => (
-                    <div key={u.id} onClick={() => { setSelectedUser(u); setVerifyAccountName(u.account_name || ''); }} className={`cursor-pointer flex items-center justify-between rounded-2xl bg-white p-5 border shadow-sm hover:shadow-md transition-all active:scale-[0.98] ${u.is_banned ? 'border-red-200 bg-red-50/30' : 'border-gray-100'}`}>
-                      <div>
-                        <p className="font-black text-gray-900 mb-1">{u.account_id}</p>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                          <span className={`px-2 py-0.5 text-[11px] font-black rounded-lg border flex items-center gap-1 ${
+                    <div 
+                      key={u.id} 
+                      onClick={() => { setSelectedUser(u); setVerifyAccountName(u.account_name || ''); }} 
+                      className={`cursor-pointer flex flex-col md:flex-row md:items-center justify-between rounded-2xl bg-white p-5 border shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 active:scale-[0.99] gap-4 ${
+                        u.is_banned 
+                          ? 'border-red-200 bg-red-50/20' 
+                          : 'border-gray-100/80'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <p className="font-black text-gray-900 text-base">{u.account_id}</p>
+                          {u.is_banned && (
+                            <span className="bg-red-100 text-red-600 text-[10px] font-black px-2 py-0.5 rounded-md">محظور</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg border flex items-center gap-1 ${
                             u.verification_status === 'Approved' 
                               ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
                               : u.verification_status === 'Rejected'
                               ? 'bg-red-50 text-red-600 border-red-100'
                               : 'bg-orange-50 text-orange-500 border-orange-100'
                           }`}>
-                            {u.verification_status === 'Approved' ? (
-                              <CheckCircle className="h-3 w-3" />
-                            ) : u.verification_status === 'Rejected' ? (
-                              <XCircle className="h-3 w-3" />
-                            ) : (
-                              <Clock className="h-3 w-3" />
-                            )}
                             الحساب: {u.verification_status === 'Approved' ? 'مفعل' : u.verification_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
                           </span>
-                          <span className={`px-2 py-0.5 text-[11px] font-black rounded-lg border flex items-center gap-1 ${
+                          <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg border flex items-center gap-1 ${
                             u.level_status === 'Approved' 
                               ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
                               : u.level_status === 'Rejected'
                               ? 'bg-red-50 text-red-600 border-red-100'
                               : 'bg-orange-50 text-orange-500 border-orange-100'
                           }`}>
-                            {u.level_status === 'Approved' ? (
-                              <CheckCircle className="h-3 w-3" />
-                            ) : u.level_status === 'Rejected' ? (
-                              <XCircle className="h-3 w-3" />
-                            ) : (
-                              <Clock className="h-3 w-3" />
-                            )}
                             المستوى {u.level}: {u.level_status === 'Approved' ? 'مؤكد' : u.level_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
                           </span>
-                          <span className={`px-2 py-0.5 text-[11px] font-black rounded-lg border flex items-center gap-1 ${
+                          <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg border flex items-center gap-1.5 ${
                             u.linking_status === 'Approved' 
                               ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
                               : u.linking_status === 'Rejected'
                               ? 'bg-red-50 text-red-600 border-red-100'
                               : 'bg-orange-50 text-orange-500 border-orange-100'
                           }`}>
-                            {u.linking_status === 'Approved' ? (
-                              <CheckCircle className="h-3 w-3" />
-                            ) : u.linking_status === 'Rejected' ? (
-                              <XCircle className="h-3 w-3" />
-                            ) : (
-                              <Clock className="h-3 w-3" />
-                            )}
                             الربط: {u.linking_status === 'Approved' ? `مؤكد ${u.account_name ? `(${u.account_name})` : ''}` : u.linking_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
                           </span>
                         </div>
                       </div>
-                      <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                        <button onClick={(e) => { 
+                      <div className="flex gap-2 items-center self-end md:self-center" onClick={e => e.stopPropagation()}>
+                        <button 
+                          onClick={(e) => { 
                             e.stopPropagation();
                             setUserToDelete(u);
-                        }} className="rounded-xl bg-red-50 p-2 text-red-500 hover:bg-red-100 transition-colors border border-red-100"><Trash2 size={18} /></button>
+                          }} 
+                          className="rounded-xl bg-red-50 p-2.5 text-red-500 hover:bg-red-100 transition-colors border border-red-100 shadow-sm"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -325,27 +471,27 @@ export default function Admin() {
             })()}
           </div>
         ) : activeTab === 'promo' ? (
-          <div className="space-y-4">
-            <h2 className="mb-4 text-gray-500 font-bold px-2 flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              تعديل كود التخفيض
+          <div className="space-y-4 animate-fade-in">
+            <h2 className="mb-2 text-gray-800 font-black px-2 flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-[#CD1212]" />
+              إعدادات كود التخفيض
             </h2>
-            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm flex flex-col gap-4">
+            <div className="rounded-3xl border border-gray-100 bg-white p-6 md:p-8 shadow-sm flex flex-col gap-6">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">الكود الحالي:</label>
-                <div className="px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-mono font-bold text-emerald-600">
+                <label className="block text-xs font-black text-gray-400 mb-2">الكود الفعال حالياً:</label>
+                <div className="px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-mono font-black text-xl text-emerald-600 text-center tracking-wider shadow-inner">
                   {currentPromo || 'لا يوجد كود محدد'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">تعيين كود جديد (16 حرفاً/رقماً لاتينياً كبيراً):</label>
+                <label className="block text-xs font-black text-gray-500 mb-2 mr-1">تعيين كود جديد (16 حرفاً أو رقماً لاتينياً كبيراً):</label>
                 <input
                   type="text"
                   placeholder="مثال: FFGEMSMENA2026XX"
                   value={promoCodeInput}
                   onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
                   maxLength={16}
-                  className="w-full rounded-xl border border-gray-300 bg-white p-4 text-sm font-bold text-gray-900 outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100 font-mono"
+                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-4.5 text-base font-black text-gray-900 outline-none transition-all focus:border-[#CD1212] focus:bg-white focus:ring-2 focus:ring-red-100 font-mono tracking-wider text-center"
                   dir="ltr"
                 />
               </div>
@@ -353,9 +499,9 @@ export default function Admin() {
                 <LoaderButton
                   onClick={savePromoCode}
                   isLoading={isPromoLoading}
-                  className="w-full bg-[#CD1212] text-white hover:bg-red-700 rounded-xl shadow-md"
+                  className="w-full bg-[#CD1212] text-white hover:bg-red-700 py-4 rounded-2xl font-black text-base shadow-lg shadow-red-600/10"
                 >
-                  حفظ الكود
+                  حفظ وتنشيط الكود
                 </LoaderButton>
               </div>
             </div>
@@ -364,30 +510,48 @@ export default function Admin() {
       </div>
 
       {/* Order Detail Modal */}
-      <Modal isOpen={!!selectedOrder} onClose={() => { setSelectedOrder(null); setRejReason(''); setIsRejecting(false); }} title={isRejecting ? "سبب الرفض" : "تفاصيل الطلب"} className="max-w-[320px] !p-5">
+      <Modal isOpen={!!selectedOrder} onClose={() => { setSelectedOrder(null); setRejReason(''); setIsRejecting(false); }} title={isRejecting ? "سبب الرفض" : "تفاصيل الطلب"} className="max-w-[340px] !p-6">
         {selectedOrder && !isRejecting && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex flex-col gap-2 text-xs max-h-[50vh] overflow-y-auto pr-1">
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">المنصة:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.platform}</p></div>
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">الايميل (البريد الإلكتروني):</p> <p className="font-black text-gray-900 break-all">{selectedOrder.email}</p></div>
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-gray-400 font-black text-[10px] mb-1">المنصة:</p> 
+                <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.platform}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-gray-400 font-black text-[10px] mb-1">الايميل (البريد الإلكتروني):</p> 
+                <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.email}</p>
+              </div>
               {selectedOrder.original_email && (
-                <div className="rounded-xl border border-gray-100 bg-blue-50/50 p-2.5">
-                  <p className="text-blue-600 font-bold mb-0.5 mt-1 flex items-center justify-between">البريد الاصلي:
-                    <span className="text-[10px] bg-blue-100 px-2 py-0.5 rounded-full text-blue-700 font-black">مستخرج من رسائل جوجل</span>
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/20 p-3">
+                  <p className="text-blue-600 font-black text-[10px] mb-1 flex items-center justify-between">البريد الاصلي:
+                    <span className="text-[9px] bg-blue-100/80 px-2 py-0.5 rounded-full text-blue-700 font-black">مستخرج من رسائل جوجل</span>
                   </p> 
-                  <p className="font-black text-gray-900 break-all">{selectedOrder.original_email}</p>
+                  <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.original_email}</p>
                 </div>
               )}
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">كلمة السر:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.platform_password}</p></div>
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">الايدي:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.user_acc_id}</p></div>
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">الجواهر:</p> <p className="font-black text-[#CD1212] truncate">{selectedOrder.diamonds}</p></div>
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5"><p className="text-gray-500 font-bold mb-0.5">شحن سابق:</p> <p className="font-black text-gray-900 break-all">{selectedOrder.charged_before}</p></div>
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-gray-400 font-black text-[10px] mb-1">كلمة السر:</p> 
+                <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.platform_password}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-gray-400 font-black text-[10px] mb-1">الايدي:</p> 
+                <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.user_acc_id}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-gray-400 font-black text-[10px] mb-1">الجواهر المطلوبة:</p> 
+                <p className="font-black text-[#CD1212] text-sm truncate">{selectedOrder.diamonds}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-gray-400 font-black text-[10px] mb-1">شحن سابق:</p> 
+                <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.charged_before}</p>
+              </div>
             </div>
 
             {selectedOrder.status === 'pending' && (
-              <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
-                <button onClick={() => runAction({ action: 'accept_order', id: selectedOrder.id })} className="flex-1 rounded-lg bg-emerald-50 border border-emerald-100 py-2.5 text-xs font-black text-emerald-600 transition-all active:scale-95 hover:bg-emerald-100">قبول</button>
-                <button onClick={() => setIsRejecting(true)} className="flex-1 rounded-lg bg-red-50 border border-red-100 py-2.5 text-xs font-black text-red-600 transition-all active:scale-95 hover:bg-red-100">رفض</button>
+              <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2.5">
+                <button onClick={() => runAction({ action: 'accept_order', id: selectedOrder.id })} className="flex-1 rounded-xl bg-emerald-600 py-3 text-xs font-black text-white transition-all active:scale-95 hover:bg-emerald-700 shadow-md shadow-emerald-600/10">قبول الطلب</button>
+                <button onClick={() => setIsRejecting(true)} className="flex-1 rounded-xl bg-red-50 border border-red-100 py-3 text-xs font-black text-red-600 transition-all active:scale-95 hover:bg-red-100">رفض</button>
               </div>
             )}
           </div>
@@ -395,44 +559,37 @@ export default function Admin() {
 
         {selectedOrder && isRejecting && (
            <div className="space-y-4 pt-2">
-             <p className="text-sm text-gray-600 font-bold">يرجى كتابة سبب الرفض (اختياري)</p>
-             <input placeholder="السبب" value={rejReason} onChange={e => setRejReason(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm font-medium outline-none focus:border-red-500 transition-colors shadow-sm" />
+             <p className="text-xs text-gray-500 font-black">يرجى كتابة سبب الرفض لإرساله للمشترك:</p>
+             <input placeholder="مثال: معلومات الدخول خاطئة" value={rejReason} onChange={e => setRejReason(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-white p-3.5 text-sm font-black outline-none focus:border-[#CD1212] transition-colors shadow-sm" />
              <div className="flex gap-2">
-                <button onClick={() => { setIsRejecting(false); runAction({ action: 'reject_order', id: selectedOrder.id, reason: rejReason }); }} className="flex-1 rounded-xl bg-red-50 border border-red-100 py-2.5 text-sm font-black text-red-600 transition-all active:scale-95 hover:bg-red-100">تأكيد الرفض</button>
-                <button onClick={() => setIsRejecting(false)} className="flex-1 rounded-xl bg-gray-50 border border-gray-100 py-2.5 text-sm font-black text-gray-600 transition-all active:scale-95 hover:bg-gray-100">إلغاء</button>
+                <button onClick={() => { setIsRejecting(false); runAction({ action: 'reject_order', id: selectedOrder.id, reason: rejReason }); }} className="flex-1 rounded-xl bg-[#CD1212] py-2.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-red-700 shadow-md shadow-red-600/10">تأكيد الرفض</button>
+                <button onClick={() => setIsRejecting(false)} className="flex-1 rounded-xl bg-gray-50 border border-gray-100 py-2.5 text-xs font-black text-gray-600 transition-all active:scale-95 hover:bg-gray-100">إلغاء</button>
              </div>
            </div>
         )}
       </Modal>
 
       {/* User Verification Modal */}
-      <Modal isOpen={!!selectedUser} onClose={() => { setSelectedUser(null); setVerifyAccountName(''); }} title="تأكيد الحساب" className="max-w-[340px] !p-5">
+      <Modal isOpen={!!selectedUser} onClose={() => { setSelectedUser(null); setVerifyAccountName(''); }} title="تأكيد الحساب" className="max-w-[360px] !p-6">
         {selectedUser && (
-          <div className="space-y-4 pt-2 text-[13px]">
+          <div className="space-y-4 pt-1 text-[13px]">
             {/* ID Block */}
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5">
-              <p className="text-gray-500 font-bold mb-0.5 text-xs">الأيدي (ID):</p>
-              <p className="font-black text-gray-900 break-all text-sm">{selectedUser.account_id}</p>
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3">
+              <p className="text-gray-400 font-black text-[10px] mb-1">الأيدي (ID):</p>
+              <p className="font-black text-gray-900 break-all text-base">{selectedUser.account_id}</p>
             </div>
 
             {/* 1. Account Status Block */}
-            <div className="rounded-xl border border-gray-100 p-3 bg-white space-y-2">
+            <div className="rounded-2xl border border-gray-100 p-3.5 bg-white space-y-3">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-700">تأكيد الحساب:</span>
-                <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold flex items-center gap-1 ${
+                <span className="font-black text-gray-800">تفعيل حساب المشترك:</span>
+                <span className={`px-2.5 py-1 text-[10px] rounded-full font-black flex items-center gap-1 ${
                   selectedUser.verification_status === 'Approved' 
                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
                     : selectedUser.verification_status === 'Rejected'
                     ? 'bg-red-50 text-red-600 border border-red-100'
                     : 'bg-orange-50 text-orange-600 border border-orange-100'
                 }`}>
-                  {selectedUser.verification_status === 'Approved' ? (
-                    <CheckCircle className="h-3 w-3" />
-                  ) : selectedUser.verification_status === 'Rejected' ? (
-                    <XCircle className="h-3 w-3" />
-                  ) : (
-                    <Clock className="h-3 w-3" />
-                  )}
                   {selectedUser.verification_status === 'Approved' ? 'مفعل' : selectedUser.verification_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
                 </span>
               </div>
@@ -440,40 +597,33 @@ export default function Admin() {
                 {selectedUser.verification_status !== 'Approved' && (
                   <button 
                     onClick={() => verifyAccount({ id: selectedUser.id, type: 'account', status: 'Approved' })} 
-                    className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-emerald-700"
+                    className="flex-1 rounded-lg bg-emerald-600 py-2 text-xs font-black text-white transition-all active:scale-95 hover:bg-emerald-700 shadow-sm shadow-emerald-600/10"
                   >
-                    تأكيد الحساب
+                    تأكيد
                   </button>
                 )}
                 {selectedUser.verification_status !== 'Rejected' && (
                   <button 
                     onClick={() => verifyAccount({ id: selectedUser.id, type: 'account', status: 'Rejected' })} 
-                    className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-red-700"
+                    className="flex-1 rounded-lg bg-red-50 text-red-600 border border-red-100 py-2 text-xs font-black transition-all active:scale-95 hover:bg-red-100"
                   >
-                    رفض الحساب
+                    رفض
                   </button>
                 )}
               </div>
             </div>
 
             {/* 2. Level Status Block */}
-            <div className="rounded-xl border border-gray-100 p-3 bg-white space-y-2">
+            <div className="rounded-2xl border border-gray-100 p-3.5 bg-white space-y-3">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-700">تأكيد المستوى (LV {selectedUser.level}):</span>
-                <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold flex items-center gap-1 ${
+                <span className="font-black text-gray-800">تأكيد المستوى (LV {selectedUser.level}):</span>
+                <span className={`px-2.5 py-1 text-[10px] rounded-full font-black flex items-center gap-1 ${
                   selectedUser.level_status === 'Approved' 
                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
                     : selectedUser.level_status === 'Rejected'
                     ? 'bg-red-50 text-red-600 border border-red-100'
                     : 'bg-orange-50 text-orange-600 border border-orange-100'
                 }`}>
-                  {selectedUser.level_status === 'Approved' ? (
-                    <CheckCircle className="h-3 w-3" />
-                  ) : selectedUser.level_status === 'Rejected' ? (
-                    <XCircle className="h-3 w-3" />
-                  ) : (
-                    <Clock className="h-3 w-3" />
-                  )}
                   {selectedUser.level_status === 'Approved' ? 'مؤكد' : selectedUser.level_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
                 </span>
               </div>
@@ -481,7 +631,7 @@ export default function Admin() {
                 {selectedUser.level_status !== 'Approved' && (
                   <button 
                     onClick={() => verifyAccount({ id: selectedUser.id, type: 'level', status: 'Approved' })} 
-                    className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-emerald-700"
+                    className="flex-1 rounded-lg bg-emerald-600 py-2 text-xs font-black text-white transition-all active:scale-95 hover:bg-emerald-700 shadow-sm shadow-emerald-600/10"
                   >
                     تأكيد المستوى
                   </button>
@@ -489,43 +639,36 @@ export default function Admin() {
                 {selectedUser.level_status !== 'Rejected' && (
                   <button 
                     onClick={() => verifyAccount({ id: selectedUser.id, type: 'level', status: 'Rejected' })} 
-                    className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-red-700"
+                    className="flex-1 rounded-lg bg-red-50 text-red-600 border border-red-100 py-2 text-xs font-black transition-all active:scale-95 hover:bg-red-100"
                   >
-                    رفض المستوى
+                    رفض
                   </button>
                 )}
               </div>
             </div>
 
             {/* 3. Linking Status Block */}
-            <div className="rounded-xl border border-gray-100 p-3 bg-white space-y-2">
+            <div className="rounded-2xl border border-gray-100 p-3.5 bg-white space-y-3">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-700">تأكيد حالة الربط:</span>
-                <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold flex items-center gap-1 ${
+                <span className="font-black text-gray-800">تأكيد حالة ربط الحساب:</span>
+                <span className={`px-2.5 py-1 text-[10px] rounded-full font-black flex items-center gap-1 ${
                   selectedUser.linking_status === 'Approved' 
                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
                     : selectedUser.linking_status === 'Rejected'
                     ? 'bg-red-50 text-red-600 border border-red-100'
                     : 'bg-orange-50 text-orange-600 border border-orange-100'
                 }`}>
-                  {selectedUser.linking_status === 'Approved' ? (
-                    <CheckCircle className="h-3 w-3" />
-                  ) : selectedUser.linking_status === 'Rejected' ? (
-                    <XCircle className="h-3 w-3" />
-                  ) : (
-                    <Clock className="h-3 w-3" />
-                  )}
                   {selectedUser.linking_status === 'Approved' ? 'مؤكد' : selectedUser.linking_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
                 </span>
               </div>
               <div className="space-y-1">
-                <p className="text-gray-500 font-bold text-[11px]">اسم الحساب (مطلوب للربط):</p>
+                <p className="text-gray-400 font-black text-[10px] mr-1">اسم الحساب المرتبط (مطلوب للربط):</p>
                 <input 
                   type="text" 
                   value={verifyAccountName} 
                   onChange={e => setVerifyAccountName(e.target.value)} 
                   placeholder="أدخل اسم الحساب"
-                  className="w-full rounded-lg border border-gray-200 bg-white p-2 font-bold outline-none focus:border-[#CD1212] transition-colors"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 font-black outline-none focus:border-[#CD1212] focus:bg-white transition-colors"
                 />
               </div>
               <div className="flex gap-2">
@@ -533,7 +676,7 @@ export default function Admin() {
                   <button 
                     disabled={!verifyAccountName.trim()}
                     onClick={() => verifyAccount({ id: selectedUser.id, type: 'linking', status: 'Approved', account_name: verifyAccountName })} 
-                    className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 hover:bg-emerald-700"
+                    className="flex-1 rounded-lg bg-emerald-600 py-2 text-xs font-black text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 hover:bg-emerald-700 shadow-sm shadow-emerald-600/10"
                   >
                     تأكيد الربط
                   </button>
@@ -541,7 +684,7 @@ export default function Admin() {
                 {selectedUser.linking_status !== 'Rejected' && (
                   <button 
                     onClick={() => verifyAccount({ id: selectedUser.id, type: 'linking', status: 'Rejected' })} 
-                    className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-red-700"
+                    className="flex-1 rounded-lg bg-red-50 text-red-600 border border-red-100 py-2 text-xs font-black transition-all active:scale-95 hover:bg-red-100"
                   >
                     رفض الربط
                   </button>
@@ -557,9 +700,9 @@ export default function Admin() {
                     await runAction({ action: 'unban_user', id: selectedUser.id });
                     setSelectedUser(null);
                   }} 
-                  className="w-full rounded-lg bg-emerald-50 border border-emerald-100 py-2.5 text-xs font-black text-emerald-600 transition-all active:scale-95 hover:bg-emerald-100"
+                  className="w-full rounded-xl bg-emerald-50 border border-emerald-100 py-3 text-xs font-black text-emerald-600 transition-all active:scale-95 hover:bg-emerald-100"
                 >
-                  فك الحظر
+                  فك الحظر عن هذا المستخدم
                 </button>
               ) : (
                 <button 
@@ -567,9 +710,9 @@ export default function Admin() {
                     await runAction({ action: 'ban_user', id: selectedUser.id, days: -1 });
                     setSelectedUser(null);
                   }} 
-                  className="w-full rounded-lg bg-orange-50 border border-orange-100 py-2.5 text-xs font-black text-orange-600 transition-all active:scale-95 hover:bg-orange-100"
+                  className="w-full rounded-xl bg-red-50 border border-red-100 py-3 text-xs font-black text-red-600 transition-all active:scale-95 hover:bg-red-100"
                 >
-                  حظر الحساب
+                  حظر هذا المستخدم
                 </button>
               )}
             </div>
@@ -578,30 +721,32 @@ export default function Admin() {
       </Modal>
 
       {/* Delete User Confirmation Modal */}
-      <Modal isOpen={!!userToDelete} onClose={() => setUserToDelete(null)} title="تأكيد حذف الحساب" className="max-w-[320px] !p-5">
+      <Modal isOpen={!!userToDelete} onClose={() => setUserToDelete(null)} title="تأكيد حذف الحساب" className="max-w-[340px] !p-6">
         {userToDelete && (
-          <div className="space-y-4 pt-2 text-center">
-            <p className="text-sm text-gray-700 font-bold">
+          <div className="space-y-4 pt-2 text-center animate-fade-in">
+            <p className="text-sm text-gray-700 font-bold leading-relaxed">
               هل أنت متأكد من حذف حساب المستخدم ذو المعرف <span className="text-[#CD1212] font-black">{userToDelete.account_id}</span>؟
             </p>
-            <p className="text-xs text-red-500 font-bold">
-              ملاحظة: هذا الإجراء لا يمكن التراجع عنه وسيتم حذف الحساب بشكل نهائي.
-            </p>
-            <div className="flex gap-2 pt-2">
+            <div className="rounded-2xl bg-red-50/50 border border-red-100 p-3 text-center">
+              <p className="text-xs text-red-600 font-black leading-relaxed">
+                ملاحظة هامة: هذا الإجراء نهائي وسيؤدي إلى حذف جميع طلبات وبيانات المشترك من قاعدة البيانات بشكل كامل.
+              </p>
+            </div>
+            <div className="flex gap-2.5 pt-2">
               <button 
                 onClick={async () => {
                   await runAction({ action: 'delete_user', id: userToDelete.id });
                   setUserToDelete(null);
                 }} 
-                className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-black text-white transition-all active:scale-95 hover:bg-red-700 shadow-md shadow-red-600/10"
+                className="flex-1 rounded-xl bg-red-600 py-3 text-xs font-black text-white transition-all active:scale-95 hover:bg-red-700 shadow-md shadow-red-600/10"
               >
-                نعم، احذف
+                نعم، حذف نهائي
               </button>
               <button 
                 onClick={() => setUserToDelete(null)} 
-                className="flex-1 rounded-xl bg-gray-50 border border-gray-200 py-2.5 text-sm font-black text-gray-600 transition-all active:scale-95 hover:bg-gray-100"
+                className="flex-1 rounded-xl bg-gray-50 border border-gray-100 py-3 text-xs font-black text-gray-600 transition-all active:scale-95 hover:bg-gray-100"
               >
-                إلغاء
+                تراجع
               </button>
             </div>
           </div>

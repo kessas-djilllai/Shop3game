@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, User, ClipboardList, Mail } from 'lucide-react';
+import { Home, User, ClipboardList, Mail, Shield } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function BottomNavigation() {
@@ -7,9 +7,10 @@ export default function BottomNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const token = localStorage.getItem('ff_token');
+  const adminToken = localStorage.getItem('ff_admin_token');
 
   // Do not render bottom navigation on login page or if not logged in
-  if (!token || location.pathname === '/' || location.pathname === '/admin') {
+  if (location.pathname === '/') {
     return null;
   }
 
@@ -38,6 +39,12 @@ export default function BottomNavigation() {
       label: language === 'ar' ? 'البريد' : 'Email',
       icon: Mail,
       path: '/email',
+    },
+    {
+      id: 'admin',
+      label: language === 'ar' ? 'الإدارة' : 'Admin',
+      icon: Shield,
+      path: '/admin',
     },
   ];
 

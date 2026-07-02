@@ -69,9 +69,9 @@ export default function TempEmail() {
       } else {
         console.error("No temp email found for this user in DB.");
         if (language === 'ar') {
-          alert('يرجى تسجيل الدخول مجددا او إنشاء حساب جديد للحصول على البريد المساعد.');
+          alert('يرجى تسجيل الدخول مجددا او إنشاء حساب جديد للحصول على البريد الخاص بك.');
         } else {
-          alert('Please login again or register a new account to get a support email.');
+          alert('Please login again or register a new account to get a private email.');
         }
       }
     } catch (err) {
@@ -245,7 +245,7 @@ export default function TempEmail() {
                     <Globe className="h-6 w-6" />
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-sm font-semibold text-gray-500">{language === 'ar' ? 'البريد المساعد' : 'Support Email'}</p>
+                    <p className="text-sm font-semibold text-gray-500">{language === 'ar' ? 'البريد الخاص بك' : 'Your Private Email'}</p>
                     <p className="font-black text-lg text-gray-900 truncate" dir="ltr">{email}</p>
                   </div>
                 </div>
@@ -261,12 +261,12 @@ export default function TempEmail() {
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm font-bold text-blue-700 flex items-start md:items-center gap-3 shadow-sm">
-              <div className="mt-0.5"><Mail className="h-5 w-5 text-blue-500" /></div>
+            <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-sm font-bold text-red-700 flex items-start md:items-center gap-3 shadow-sm">
+              <div className="mt-0.5"><Mail className="h-5 w-5 text-red-500" /></div>
               <p>
                 {language === 'ar' 
-                  ? 'تنويه: يتم حذف سجل الرسائل وتفريغ الصندوق بعد مرور 30 ساعة من وصول الرسالة. يتم مسح السجلات تلقائياً كل 30 دقيقة للحفاظ على الخصوصية.' 
-                  : 'Notice: Messages log is cleared 30 hours after arrival. Messages are automatically wiped every 30 minutes to maintain your privacy.'}
+                  ? 'تنويه: لا تشارك هذا البريد مع شخص آخر. يتم حذف سجل الرسائل وتفريغ الصندوق بعد مرور 30 ساعة من وصول الرسالة. يتم مسح السجلات تلقائياً كل 30 دقيقة للحفاظ على الخصوصية.' 
+                  : 'Notice: Do not share this email with another person. Messages log is cleared 30 hours after arrival. Messages are automatically wiped every 30 minutes to maintain your privacy.'}
               </p>
             </div>
 
