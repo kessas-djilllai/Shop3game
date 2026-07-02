@@ -9,6 +9,7 @@ import Admin from './pages/Admin';
 import TempEmail from './pages/TempEmail';
 import SearchID from './pages/SearchID';
 import { LanguageProvider } from './context/LanguageContext';
+import BottomNavigation from './components/BottomNavigation';
 import './index.css';
 
 // Context-like Auth Guard
@@ -112,6 +113,7 @@ export default function App() {
             
             <Route path="/admin" element={<Admin />} />
           </Routes>
+          <BottomNavigation />
         </div>
       </BrowserRouter>
     </LanguageProvider>

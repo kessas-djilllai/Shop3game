@@ -13,6 +13,84 @@ const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+function parseUserStatuses(statusStr: string | null) {
+    const defaultStatuses = {
+        verification_status: 'Pending',
+        level_status: 'Pending',
+        linking_status: 'Pending'
+    };
+
+    if (!statusStr) return defaultStatuses;
+
+    if (statusStr.trim().startsWith('{')) {
+        try {
+            const parsed = JSON.parse(statusStr);
+            return {
+                verification_status: parsed.account || 'Pending',
+                level_status: parsed.level || 'Pending',
+                linking_status: parsed.linking || 'Pending'
+            };
+        } catch (e) {
+            // fallback
+        }
+    }
+
+    // Legacy string format: 'Approved' or 'Pending'
+    if (statusStr === 'Approved') {
+        return {
+            verification_status: 'Approved',
+            level_status: 'Approved',
+            linking_status: 'Approved'
+        };
+    }
+
+    return defaultStatuses;
+}
+
+async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking', status: 'Approved' | 'Rejected' = 'Approved', account_name?: string) {
+    const { data: user, error: fetchError } = await supabase
+        .from('users')
+        .select('verification_status, account_name')
+        .eq('id', id)
+        .single();
+
+    if (fetchError || !user) {
+        throw new Error('User not found');
+    }
+
+    const currentStatuses = parseUserStatuses(user.verification_status);
+
+    if (type === 'level') {
+        currentStatuses.level_status = status;
+    } else if (type === 'linking') {
+        currentStatuses.linking_status = status;
+        if (account_name) {
+            user.account_name = account_name;
+        }
+    } else {
+        currentStatuses.verification_status = status;
+        if (account_name) {
+            user.account_name = account_name;
+        }
+    }
+
+    const updatedStatusStr = JSON.stringify({
+        account: currentStatuses.verification_status,
+        level: currentStatuses.level_status,
+        linking: currentStatuses.linking_status
+    });
+
+    const { error: updateError } = await supabase
+        .from('users')
+        .update({
+            verification_status: updatedStatusStr,
+            account_name: user.account_name
+        })
+        .eq('id', id);
+
+    if (updateError) throw updateError;
+}
+
 // --- API ROUTES ---
 
 // Auth: Register
@@ -74,7 +152,8 @@ app.post('/api/register', async (req, res) => {
         if (error) throw error;
 
         const token = jwt.sign({ id: newUser.id }, JWT_SECRET);
-        res.json({ token, user: { id: newUser.id, account_id, temp_email, temp_password, level: newUser.level, verification_status: newUser.verification_status } });
+        const parsedStatuses = parseUserStatuses(newUser.verification_status);
+        res.json({ token, user: { id: newUser.id, account_id, temp_email, temp_password, level: newUser.level, ...parsedStatuses, account_name: newUser.account_name } });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -113,7 +192,8 @@ app.post('/api/login', async (req, res) => {
         const temp_password = user.temp_password || null;
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, account_id: user.account_id, level: user.level, temp_email, temp_password, verification_status: user.verification_status } });
+        const parsedStatuses = parseUserStatuses(user.verification_status);
+        res.json({ token, user: { id: user.id, account_id: user.account_id, level: user.level, temp_email, temp_password, ...parsedStatuses, account_name: user.account_name } });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -184,9 +264,76 @@ app.get('/api/user/me', async (req, res) => {
                 return res.status(404).json({ message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر' });
             }
         }
-        res.json({ status: 'success', user: { id: user.id, account_id: user.account_id, level: user.level, verification_status: user.verification_status } });
+        const parsedStatuses = parseUserStatuses(user.verification_status);
+        res.json({ status: 'success', user: { id: user.id, account_id: user.account_id, level: user.level, ...parsedStatuses, account_name: user.account_name } });
     } catch (e) {
         res.status(401).json({ message: 'Invalid token' });
+    }
+});
+
+// User: Update Level and Account Name
+app.post('/api/user/update-info', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    const { level, account_name } = req.body;
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        const { data: user } = await supabase.from('users').select('*').eq('id', decoded.id).single();
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const currentStatuses = parseUserStatuses(user.verification_status);
+        
+        // Reset level_status if level has changed
+        let newLevel = user.level;
+        if (level !== undefined && level !== null) {
+            newLevel = parseInt(level) || 0;
+            if (newLevel !== user.level) {
+                currentStatuses.level_status = 'Pending';
+            }
+        }
+
+        // Reset linking_status if account_name has changed
+        let newAccountName = user.account_name;
+        if (account_name !== undefined) {
+            newAccountName = account_name;
+            if (newAccountName !== user.account_name) {
+                currentStatuses.linking_status = 'Pending';
+            }
+        }
+
+        const newVerificationStatusStr = JSON.stringify({
+            account: currentStatuses.verification_status,
+            level: currentStatuses.level_status,
+            linking: currentStatuses.linking_status
+        });
+
+        const { data: updatedUser, error } = await supabase
+            .from('users')
+            .update({ 
+                level: newLevel, 
+                account_name: newAccountName,
+                verification_status: newVerificationStatusStr
+            })
+            .eq('id', decoded.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        const parsedStatuses = parseUserStatuses(updatedUser.verification_status);
+        res.json({ 
+            status: 'success', 
+            user: { 
+                id: updatedUser.id, 
+                account_id: updatedUser.account_id, 
+                level: updatedUser.level, 
+                ...parsedStatuses, 
+                account_name: updatedUser.account_name 
+            } 
+        });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: 'خطأ في السيرفر' });
     }
 });
 
@@ -278,10 +425,20 @@ app.get('/api/admin/data', async (req, res) => {
             .select('*, users(account_id, original_email)')
             .order('level', { ascending: false });
 
-        const { data: users } = await supabase
+        const { data: users, error: usersError } = await supabase
             .from('users')
-            .select('id, account_id, level, is_banned, ban_until, original_email')
+            .select('id, account_id, level, is_banned, ban_until, original_email, account_name, verification_status')
             .order('level', { ascending: false });
+
+        if (usersError) throw usersError;
+
+        const formattedUsers = (users || []).map(u => {
+            const parsed = parseUserStatuses(u.verification_status);
+            return {
+                ...u,
+                ...parsed
+            };
+        });
 
         // Flatten user account id for frontend
         const formattedOrders = (orders || []).map(o => ({
@@ -290,7 +447,7 @@ app.get('/api/admin/data', async (req, res) => {
             original_email: o.original_email || (o as any).users?.original_email
         }));
 
-        res.json({ orders: formattedOrders, users });
+        res.json({ orders: formattedOrders, users: formattedUsers });
     } catch (e) {
         res.status(403).json({ message: 'Unauthorized' });
     }
@@ -344,6 +501,31 @@ app.post('/api/admin/promo-code', async (req, res) => {
 });
 
 // Admin: Actions
+app.post('/api/admin/verify-account', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    const { id, type, status, account_name, is_banned, ban_days } = req.body;
+    try {
+        const decoded: any = jwt.verify(token!, JWT_SECRET);
+        if (!decoded.isAdmin) throw new Error();
+
+        await updateUserStatus(id, type, status || 'Approved', account_name);
+
+        if (is_banned) {
+            const banUntil = new Date();
+            banUntil.setDate(banUntil.getDate() + parseInt(ban_days || '-1'));
+            await supabase.from('users').update({
+                is_banned: true,
+                ban_until: banUntil.toISOString()
+            }).eq('id', id);
+        }
+
+        res.json({ status: 'success' });
+    } catch (e: any) {
+        console.error("verify-account error:", e);
+        res.status(500).json({ message: e.message || 'حدث خطأ' });
+    }
+});
+
 app.post('/api/admin/action', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     const { action, id, reason, days } = req.body;
@@ -358,7 +540,11 @@ app.post('/api/admin/action', async (req, res) => {
         } else if (action === 'delete_user') {
             await supabase.from('users').delete().eq('id', id);
         } else if (action === 'approve_user') {
-            await supabase.from('users').update({ verification_status: 'Approved' }).eq('id', id);
+            await updateUserStatus(id, 'account');
+        } else if (action === 'approve_level') {
+            await updateUserStatus(id, 'level');
+        } else if (action === 'approve_linking') {
+            await updateUserStatus(id, 'linking');
         } else if (action === 'ban_user') {
             const banUntil = new Date();
             banUntil.setDate(banUntil.getDate() + parseInt(days));
@@ -367,8 +553,9 @@ app.post('/api/admin/action', async (req, res) => {
             await supabase.from('users').update({ is_banned: false, ban_until: null }).eq('id', id);
         }
         res.json({ status: 'success' });
-    } catch (e) {
-        res.status(403).json({ message: 'Unauthorized' });
+    } catch (e: any) {
+        console.error("admin action error:", e);
+        res.status(500).json({ message: e.message || 'حدث خطأ' });
     }
 });
 

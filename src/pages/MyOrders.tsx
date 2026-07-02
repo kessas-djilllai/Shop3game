@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { motion } from 'motion/react';
 import { ArrowRight, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -22,15 +21,20 @@ export default function MyOrders() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setOrders(res.data);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      if (e.response?.status === 401 || e.response?.status === 404) {
+        localStorage.removeItem('ff_token');
+        localStorage.removeItem('ff_user');
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full relative bg-[#F8F9FA] p-4 md:p-8 font-sans" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen w-full relative bg-[#F8F9FA] p-4 md:p-8 font-sans pb-28" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <div className="relative z-10 mx-auto max-w-lg pt-4">
         <div className="mb-8 flex items-center gap-4">
           <button onClick={() => navigate('/charge')} className="rounded-xl bg-white border border-gray-100 p-3 shadow-sm transition-all hover:bg-gray-50 active:scale-95">
@@ -49,11 +53,8 @@ export default function MyOrders() {
         ) : (
           <div className="space-y-3">
             {orders.map((o, idx) => (
-              <motion.div
+              <div
                 key={o.id}
-                initial={{ opacity: 0, x: language === 'ar' ? 20 : -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.05 }}
                 className={`rounded-2xl border-l-[6px] bg-white p-5 shadow-sm border ${
                   o.status === 'accepted' ? 'border-emerald-500 border-l-emerald-500' : 
                   o.status === 'rejected' ? 'border-red-500 border-l-red-500' : 'border-amber-400 border-l-amber-500'
@@ -86,7 +87,7 @@ export default function MyOrders() {
                     {new Date(o.created_at).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}

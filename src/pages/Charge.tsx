@@ -154,10 +154,25 @@ export default function Charge() {
     
     setIsTyping(true);
     
-    for (let i = 0; i < steps.length; i++) {
+    const processingMsgId = Date.now().toString() + "_processing";
+    
+    // Add the first step as a message
+    setMessages(prev => [...prev, { id: processingMsgId, sender: 'ai', text: steps[0], type: 'processing' }]);
+    
+    for (let i = 1; i < steps.length; i++) {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      setMessages(prev => [...prev, { id: Date.now().toString() + i, sender: 'ai', text: steps[i], type: 'processing' }]);
+      setMessages(prev => prev.map(msg => {
+        if (msg.id === processingMsgId) {
+          return {
+            ...msg,
+            text: steps.slice(0, i + 1).join("\n")
+          };
+        }
+        return msg;
+      }));
     }
+    
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
     try {
       const token = localStorage.getItem("ff_token");
@@ -273,9 +288,6 @@ export default function Charge() {
       <header className="sticky top-0 z-40 w-full border-b border-gray-100 bg-white/80 backdrop-blur-xl shadow-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => setIsSidebarOpen(true)} className="rounded-xl p-2 text-gray-600 hover:bg-gray-100 transition-colors">
-              <Menu className="h-6 w-6" />
-            </button>
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#CD1212] to-red-700 shadow-md">
                 <Bot className="h-5 w-5 text-white" />
@@ -314,7 +326,7 @@ export default function Charge() {
                   </div>
                 )}
                 
-                <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-5 py-3.5 text-sm sm:text-base font-medium leading-relaxed ${
+                <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-5 py-3.5 text-sm sm:text-base font-medium leading-relaxed whitespace-pre-line ${
                   msg.sender === 'user' 
                     ? 'bg-[#CD1212] text-white rounded-tl-none shadow-md shadow-red-600/10' 
                     : msg.type === 'processing' 
@@ -421,89 +433,6 @@ export default function Charge() {
         </div>
       </Modal>
 
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div 
-            initial={{ x: language === 'ar' ? '100%' : '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: language === 'ar' ? '100%' : '-100%' }}
-            transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-            className={`fixed top-0 bottom-0 ${language === 'ar' ? 'right-0' : 'left-0'} z-[110] w-[280px] sm:w-72 bg-white shadow-2xl flex flex-col`}
-          >
-            <div className={`flex items-center justify-between p-4 border-b border-gray-100 ${language === 'ar' ? '' : 'flex-row-reverse'}`}>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center border-2 border-red-100">
-                  <User className="h-5 w-5 text-red-600" />
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-gray-900 truncate max-w-[120px]">{loggedInUser?.account_id || loggedInUser?.temp_email?.split('@')[0]}</div>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsSidebarOpen(false)}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-               <button 
-                onClick={() => { setIsSidebarOpen(false); navigate('/my-orders'); }}
-                className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
-              >
-                <ClipboardList className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
-                {language === 'ar' ? 'طلباتي' : 'My Orders'}
-              </button>
-              <button 
-                onClick={() => { setIsSidebarOpen(false); navigate('/account'); }}
-                className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
-              >
-                <User className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
-                {language === 'ar' ? 'الحساب' : 'Account'}
-              </button>
-              <button 
-                onClick={() => { setIsSidebarOpen(false); navigate('/email'); }}
-                className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
-              >
-                <Mail className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
-                {language === 'ar' ? 'البريد المؤقت' : 'Temp Email'}
-              </button>
-              <button 
-                onClick={() => { setIsSidebarOpen(false); navigate('/admin'); }}
-                className="flex w-full items-center rounded-xl bg-gray-50 p-4 font-bold text-gray-700 transition-colors hover:bg-red-50 hover:text-red-600"
-              >
-                <ShieldAlert className={`h-5 w-5 text-gray-500 ${language === 'ar' ? 'ml-3' : 'mr-3'}`} />
-                {language === 'ar' ? 'لوحة الإدارة' : 'Admin Panel'}
-              </button>
-            </div>
-            
-            <div className="p-4 border-t border-gray-100">
-              <button onClick={() => {
-                localStorage.removeItem('ff_token');
-                localStorage.removeItem('ff_user');
-                window.location.href = '/';
-              }} className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-50 text-red-600 font-bold hover:bg-red-100 transition-colors">
-                <LogOut className="h-5 w-5" />
-                {language === 'ar' ? 'تسجيل الخروج' : 'Logout'}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

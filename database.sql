@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS users (
     temp_email TEXT NULL,
     temp_password TEXT NULL,
     original_email TEXT NULL,
+    verification_status TEXT DEFAULT 'Pending',
+    level_status TEXT DEFAULT 'Pending',
+    linking_status TEXT DEFAULT 'Pending',
+    account_name TEXT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -51,4 +55,8 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Migration Scripts (Run these to update existing tables without losing data)
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS original_email TEXT NULL;
 -- ALTER TABLE orders ADD COLUMN IF NOT EXISTS original_email TEXT NULL;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'Pending';
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS level_status TEXT DEFAULT 'Pending';
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS linking_status TEXT DEFAULT 'Pending';
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS account_name TEXT NULL;
 

@@ -88,7 +88,7 @@ export default function SearchID() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#F8F9FA] p-4 md:p-8 font-sans ${language === 'ar' ? 'text-right' : 'text-left'}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className={`min-h-screen bg-[#F8F9FA] p-4 md:p-8 font-sans pb-28 ${language === 'ar' ? 'text-right' : 'text-left'}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <div className="mx-auto max-w-2xl">
         
         {/* Header */}

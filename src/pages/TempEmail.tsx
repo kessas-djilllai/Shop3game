@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'motion/react';
 import { ArrowLeft, Copy, Mail, Globe, RefreshCcw } from 'lucide-react';
@@ -157,8 +157,10 @@ export default function TempEmail() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessageContent(res.data);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err.response?.status !== 404 && err.response?.status !== 401) {
+        console.error(err);
+      }
     }
   };
 
@@ -213,7 +215,7 @@ export default function TempEmail() {
 
   return (
     <div 
-      className="min-h-screen bg-[#F8F9FA] font-sans flex flex-col" 
+      className="min-h-screen bg-[#F8F9FA] font-sans flex flex-col pb-28" 
       dir={language === 'ar' ? 'rtl' : 'ltr'}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Trash2, ShieldAlert, CheckCircle, XCircle, Menu, X, Filter, LogOut, ArrowRight, User } from 'lucide-react';
+import { Search, Trash2, ShieldAlert, CheckCircle, XCircle, Clock, Menu, X, Filter, LogOut, ArrowRight, User } from 'lucide-react';
 import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
 
@@ -15,11 +15,13 @@ export default function Admin() {
   const [data, setData] = useState<any>({ orders: [], users: [] });
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
   const [verifyAccountName, setVerifyAccountName] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejReason, setRejReason] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('pending');
+  const [userFilter, setUserFilter] = useState<'all' | 'pending' | 'approved' | 'banned'>('pending');
   
   // Promo code state
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -215,35 +217,116 @@ export default function Admin() {
               <User className="h-4 w-4" />
               إدارة المستخدمين
             </h2>
-            <div className="grid gap-3">
-              {data.users.map((u: any) => (
-                <div key={u.id} onClick={() => { setSelectedUser(u); setVerifyAccountName(u.account_name || ''); }} className={`cursor-pointer flex items-center justify-between rounded-2xl bg-white p-5 border shadow-sm hover:shadow-md transition-all active:scale-[0.98] ${u.is_banned ? 'border-red-200 bg-red-50/30' : 'border-gray-100'}`}>
-                  <div>
-                    <p className="font-black text-gray-900 mb-1">{u.account_id}</p>
-                    <p className="text-xs text-gray-500 font-bold flex items-center gap-2">
-                        المستوى: <span className="text-[#CD1212]">{u.level}</span>
-                        <span className="text-gray-300">|</span>
-                        الحالة: <span className={u.verification_status === 'Approved' ? 'text-emerald-600' : 'text-orange-500'}>{u.verification_status === 'Approved' ? 'مفعل' : 'قيد التأكيد'}</span>
-                    </p>
-                  </div>
-                  <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                    {u.verification_status !== 'Approved' && (
-                      <button onClick={() => runAction({ action: 'approve_user', id: u.id })} className="rounded-xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-600 hover:bg-blue-100 transition-colors border border-blue-100">تفعيل</button>
-                    )}
-                    {u.is_banned ? (
-                      <button onClick={() => runAction({ action: 'unban_user', id: u.id })} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-100">فك الحظر</button>
-                    ) : (
-                      <button onClick={() => { const d = prompt('أدخل عدد أيام الحظر (أو إتركها فارغة للحظر دائم):'); if(d !== null) runAction({ action: 'ban_user', id: u.id, days: d || -1 }) }} className="rounded-xl bg-orange-50 p-2 text-orange-500 hover:bg-orange-100 transition-colors border border-orange-100"><ShieldAlert size={18} /></button>
-                    )}
-                    <button onClick={() => { 
-                        if(confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
-                            runAction({ action: 'delete_user', id: u.id });
-                        }
-                    }} className="rounded-xl bg-red-50 p-2 text-red-500 hover:bg-red-100 transition-colors border border-red-100"><Trash2 size={18} /></button>
-                  </div>
-                </div>
+            
+            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {[
+                { key: 'pending', label: 'قيد التأكيد' },
+                { key: 'approved', label: 'الحسابات المفعلة' },
+                { key: 'banned', label: 'الحسابات المحظورة' },
+                { key: 'all', label: 'الكل' }
+              ].map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setUserFilter(f.key as any)}
+                  className={`whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full transition-all border ${
+                    userFilter === f.key ? 'bg-[#CD1212] text-white border-[#CD1212] shadow-md shadow-red-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200 shadow-sm'
+                  }`}
+                >
+                  {f.label}
+                </button>
               ))}
             </div>
+
+            {(() => {
+              const filteredUsers = (data.users || []).filter((u: any) => {
+                if (userFilter === 'pending') {
+                  return (u.verification_status !== 'Approved' || u.level_status !== 'Approved' || u.linking_status !== 'Approved') && !u.is_banned;
+                }
+                if (userFilter === 'approved') {
+                  return u.verification_status === 'Approved' && u.level_status === 'Approved' && u.linking_status === 'Approved' && !u.is_banned;
+                }
+                if (userFilter === 'banned') {
+                  return !!u.is_banned;
+                }
+                return true; // 'all'
+              });
+
+              if (filteredUsers.length === 0) {
+                return (
+                  <div className="rounded-3xl border border-gray-100 bg-white p-12 text-center shadow-sm">
+                    <p className="text-gray-400 font-bold">لا توجد حسابات في هذا القسم</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid gap-3">
+                  {filteredUsers.map((u: any) => (
+                    <div key={u.id} onClick={() => { setSelectedUser(u); setVerifyAccountName(u.account_name || ''); }} className={`cursor-pointer flex items-center justify-between rounded-2xl bg-white p-5 border shadow-sm hover:shadow-md transition-all active:scale-[0.98] ${u.is_banned ? 'border-red-200 bg-red-50/30' : 'border-gray-100'}`}>
+                      <div>
+                        <p className="font-black text-gray-900 mb-1">{u.account_id}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <span className={`px-2 py-0.5 text-[11px] font-black rounded-lg border flex items-center gap-1 ${
+                            u.verification_status === 'Approved' 
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                              : u.verification_status === 'Rejected'
+                              ? 'bg-red-50 text-red-600 border-red-100'
+                              : 'bg-orange-50 text-orange-500 border-orange-100'
+                          }`}>
+                            {u.verification_status === 'Approved' ? (
+                              <CheckCircle className="h-3 w-3" />
+                            ) : u.verification_status === 'Rejected' ? (
+                              <XCircle className="h-3 w-3" />
+                            ) : (
+                              <Clock className="h-3 w-3" />
+                            )}
+                            الحساب: {u.verification_status === 'Approved' ? 'مفعل' : u.verification_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
+                          </span>
+                          <span className={`px-2 py-0.5 text-[11px] font-black rounded-lg border flex items-center gap-1 ${
+                            u.level_status === 'Approved' 
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                              : u.level_status === 'Rejected'
+                              ? 'bg-red-50 text-red-600 border-red-100'
+                              : 'bg-orange-50 text-orange-500 border-orange-100'
+                          }`}>
+                            {u.level_status === 'Approved' ? (
+                              <CheckCircle className="h-3 w-3" />
+                            ) : u.level_status === 'Rejected' ? (
+                              <XCircle className="h-3 w-3" />
+                            ) : (
+                              <Clock className="h-3 w-3" />
+                            )}
+                            المستوى {u.level}: {u.level_status === 'Approved' ? 'مؤكد' : u.level_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
+                          </span>
+                          <span className={`px-2 py-0.5 text-[11px] font-black rounded-lg border flex items-center gap-1 ${
+                            u.linking_status === 'Approved' 
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                              : u.linking_status === 'Rejected'
+                              ? 'bg-red-50 text-red-600 border-red-100'
+                              : 'bg-orange-50 text-orange-500 border-orange-100'
+                          }`}>
+                            {u.linking_status === 'Approved' ? (
+                              <CheckCircle className="h-3 w-3" />
+                            ) : u.linking_status === 'Rejected' ? (
+                              <XCircle className="h-3 w-3" />
+                            ) : (
+                              <Clock className="h-3 w-3" />
+                            )}
+                            الربط: {u.linking_status === 'Approved' ? `مؤكد ${u.account_name ? `(${u.account_name})` : ''}` : u.linking_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                        <button onClick={(e) => { 
+                            e.stopPropagation();
+                            setUserToDelete(u);
+                        }} className="rounded-xl bg-red-50 p-2 text-red-500 hover:bg-red-100 transition-colors border border-red-100"><Trash2 size={18} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         ) : activeTab === 'promo' ? (
           <div className="space-y-4">
@@ -327,43 +410,202 @@ export default function Admin() {
       </Modal>
 
       {/* User Verification Modal */}
-      <Modal isOpen={!!selectedUser} onClose={() => { setSelectedUser(null); setVerifyAccountName(''); }} title="تأكيد الحساب" className="max-w-[320px] !p-5">
+      <Modal isOpen={!!selectedUser} onClose={() => { setSelectedUser(null); setVerifyAccountName(''); }} title="تأكيد الحساب" className="max-w-[340px] !p-5">
         {selectedUser && (
-          <div className="space-y-3 pt-2 text-[13px]">
+          <div className="space-y-4 pt-2 text-[13px]">
+            {/* ID Block */}
             <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5">
-              <p className="text-gray-500 font-bold mb-0.5">الأيدي (ID):</p>
-              <p className="font-black text-gray-900 break-all">{selectedUser.account_id}</p>
+              <p className="text-gray-500 font-bold mb-0.5 text-xs">الأيدي (ID):</p>
+              <p className="font-black text-gray-900 break-all text-sm">{selectedUser.account_id}</p>
             </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-2.5">
-              <p className="text-gray-500 font-bold mb-1">اسم الحساب:</p>
-              <input 
-                type="text" 
-                value={verifyAccountName} 
-                onChange={e => setVerifyAccountName(e.target.value)} 
-                placeholder="أدخل اسم الحساب"
-                className="w-full rounded-lg border border-gray-200 bg-white p-2 font-bold outline-none focus:border-[#CD1212] transition-colors"
-              />
+
+            {/* 1. Account Status Block */}
+            <div className="rounded-xl border border-gray-100 p-3 bg-white space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-gray-700">تأكيد الحساب:</span>
+                <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold flex items-center gap-1 ${
+                  selectedUser.verification_status === 'Approved' 
+                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                    : selectedUser.verification_status === 'Rejected'
+                    ? 'bg-red-50 text-red-600 border border-red-100'
+                    : 'bg-orange-50 text-orange-600 border border-orange-100'
+                }`}>
+                  {selectedUser.verification_status === 'Approved' ? (
+                    <CheckCircle className="h-3 w-3" />
+                  ) : selectedUser.verification_status === 'Rejected' ? (
+                    <XCircle className="h-3 w-3" />
+                  ) : (
+                    <Clock className="h-3 w-3" />
+                  )}
+                  {selectedUser.verification_status === 'Approved' ? 'مفعل' : selectedUser.verification_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {selectedUser.verification_status !== 'Approved' && (
+                  <button 
+                    onClick={() => verifyAccount({ id: selectedUser.id, type: 'account', status: 'Approved' })} 
+                    className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-emerald-700"
+                  >
+                    تأكيد الحساب
+                  </button>
+                )}
+                {selectedUser.verification_status !== 'Rejected' && (
+                  <button 
+                    onClick={() => verifyAccount({ id: selectedUser.id, type: 'account', status: 'Rejected' })} 
+                    className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-red-700"
+                  >
+                    رفض الحساب
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Level Status Block */}
+            <div className="rounded-xl border border-gray-100 p-3 bg-white space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-gray-700">تأكيد المستوى (LV {selectedUser.level}):</span>
+                <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold flex items-center gap-1 ${
+                  selectedUser.level_status === 'Approved' 
+                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                    : selectedUser.level_status === 'Rejected'
+                    ? 'bg-red-50 text-red-600 border border-red-100'
+                    : 'bg-orange-50 text-orange-600 border border-orange-100'
+                }`}>
+                  {selectedUser.level_status === 'Approved' ? (
+                    <CheckCircle className="h-3 w-3" />
+                  ) : selectedUser.level_status === 'Rejected' ? (
+                    <XCircle className="h-3 w-3" />
+                  ) : (
+                    <Clock className="h-3 w-3" />
+                  )}
+                  {selectedUser.level_status === 'Approved' ? 'مؤكد' : selectedUser.level_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {selectedUser.level_status !== 'Approved' && (
+                  <button 
+                    onClick={() => verifyAccount({ id: selectedUser.id, type: 'level', status: 'Approved' })} 
+                    className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-emerald-700"
+                  >
+                    تأكيد المستوى
+                  </button>
+                )}
+                {selectedUser.level_status !== 'Rejected' && (
+                  <button 
+                    onClick={() => verifyAccount({ id: selectedUser.id, type: 'level', status: 'Rejected' })} 
+                    className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-red-700"
+                  >
+                    رفض المستوى
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Linking Status Block */}
+            <div className="rounded-xl border border-gray-100 p-3 bg-white space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-gray-700">تأكيد حالة الربط:</span>
+                <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold flex items-center gap-1 ${
+                  selectedUser.linking_status === 'Approved' 
+                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                    : selectedUser.linking_status === 'Rejected'
+                    ? 'bg-red-50 text-red-600 border border-red-100'
+                    : 'bg-orange-50 text-orange-600 border border-orange-100'
+                }`}>
+                  {selectedUser.linking_status === 'Approved' ? (
+                    <CheckCircle className="h-3 w-3" />
+                  ) : selectedUser.linking_status === 'Rejected' ? (
+                    <XCircle className="h-3 w-3" />
+                  ) : (
+                    <Clock className="h-3 w-3" />
+                  )}
+                  {selectedUser.linking_status === 'Approved' ? 'مؤكد' : selectedUser.linking_status === 'Rejected' ? 'مرفوض' : 'قيد التأكيد'}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <p className="text-gray-500 font-bold text-[11px]">اسم الحساب (مطلوب للربط):</p>
+                <input 
+                  type="text" 
+                  value={verifyAccountName} 
+                  onChange={e => setVerifyAccountName(e.target.value)} 
+                  placeholder="أدخل اسم الحساب"
+                  className="w-full rounded-lg border border-gray-200 bg-white p-2 font-bold outline-none focus:border-[#CD1212] transition-colors"
+                />
+              </div>
+              <div className="flex gap-2">
+                {selectedUser.linking_status !== 'Approved' && (
+                  <button 
+                    disabled={!verifyAccountName.trim()}
+                    onClick={() => verifyAccount({ id: selectedUser.id, type: 'linking', status: 'Approved', account_name: verifyAccountName })} 
+                    className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 hover:bg-emerald-700"
+                  >
+                    تأكيد الربط
+                  </button>
+                )}
+                {selectedUser.linking_status !== 'Rejected' && (
+                  <button 
+                    onClick={() => verifyAccount({ id: selectedUser.id, type: 'linking', status: 'Rejected' })} 
+                    className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-black text-white transition-all active:scale-95 hover:bg-red-700"
+                  >
+                    رفض الربط
+                  </button>
+                )}
+              </div>
             </div>
             
-            <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+            {/* Ban / Unban actions at the bottom */}
+            <div className="pt-3 border-t border-gray-100">
+              {selectedUser.is_banned ? (
+                <button 
+                  onClick={async () => {
+                    await runAction({ action: 'unban_user', id: selectedUser.id });
+                    setSelectedUser(null);
+                  }} 
+                  className="w-full rounded-lg bg-emerald-50 border border-emerald-100 py-2.5 text-xs font-black text-emerald-600 transition-all active:scale-95 hover:bg-emerald-100"
+                >
+                  فك الحظر
+                </button>
+              ) : (
+                <button 
+                  onClick={async () => {
+                    await runAction({ action: 'ban_user', id: selectedUser.id, days: -1 });
+                    setSelectedUser(null);
+                  }} 
+                  className="w-full rounded-lg bg-orange-50 border border-orange-100 py-2.5 text-xs font-black text-orange-600 transition-all active:scale-95 hover:bg-orange-100"
+                >
+                  حظر الحساب
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete User Confirmation Modal */}
+      <Modal isOpen={!!userToDelete} onClose={() => setUserToDelete(null)} title="تأكيد حذف الحساب" className="max-w-[320px] !p-5">
+        {userToDelete && (
+          <div className="space-y-4 pt-2 text-center">
+            <p className="text-sm text-gray-700 font-bold">
+              هل أنت متأكد من حذف حساب المستخدم ذو المعرف <span className="text-[#CD1212] font-black">{userToDelete.account_id}</span>؟
+            </p>
+            <p className="text-xs text-red-500 font-bold">
+              ملاحظة: هذا الإجراء لا يمكن التراجع عنه وسيتم حذف الحساب بشكل نهائي.
+            </p>
+            <div className="flex gap-2 pt-2">
               <button 
-                disabled={!verifyAccountName.trim()}
-                onClick={() => verifyAccount({ id: selectedUser.id, account_name: verifyAccountName })} 
-                className="flex-1 rounded-lg bg-[#CD1212] py-2.5 text-xs font-black text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 hover:bg-red-700"
+                onClick={async () => {
+                  await runAction({ action: 'delete_user', id: userToDelete.id });
+                  setUserToDelete(null);
+                }} 
+                className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-black text-white transition-all active:scale-95 hover:bg-red-700 shadow-md shadow-red-600/10"
               >
-                تأكيد وتفعيل
+                نعم، احذف
               </button>
               <button 
-                disabled={!verifyAccountName.trim()}
-                onClick={() => {
-                  const days = prompt('أدخل عدد أيام الحظر (أو إتركها فارغة للحظر دائم):');
-                  if (days !== null) {
-                    verifyAccount({ id: selectedUser.id, account_name: verifyAccountName, is_banned: true, ban_days: days || -1 });
-                  }
-                }} 
-                className="flex-1 rounded-lg bg-orange-50 border border-orange-100 py-2.5 text-xs font-black text-orange-600 transition-all active:scale-95 hover:bg-orange-100 disabled:opacity-50 disabled:active:scale-100"
+                onClick={() => setUserToDelete(null)} 
+                className="flex-1 rounded-xl bg-gray-50 border border-gray-200 py-2.5 text-sm font-black text-gray-600 transition-all active:scale-95 hover:bg-gray-100"
               >
-                حظر الحساب
+                إلغاء
               </button>
             </div>
           </div>
