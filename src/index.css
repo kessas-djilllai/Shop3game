@@ -18,3 +18,28 @@ h1, h2, h3, .font-black {
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Messenger-style bouncing dots */
+@keyframes messengerBounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-7px);
+    opacity: 1;
+  }
+}
+
+.animate-typing-1 {
+  animation: messengerBounce 1s infinite ease-in-out;
+}
+.animate-typing-2 {
+  animation: messengerBounce 1s infinite ease-in-out;
+  animation-delay: 0.16s;
+}
+.animate-typing-3 {
+  animation: messengerBounce 1s infinite ease-in-out;
+  animation-delay: 0.32s;
+}
+

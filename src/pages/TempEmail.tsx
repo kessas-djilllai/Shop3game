@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ArrowLeft, Copy, Mail, Globe, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, Copy, Mail, Globe, RefreshCcw, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -15,15 +15,148 @@ export default function TempEmail() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [messageContent, setMessageContent] = useState<any>(null);
+  const [showNoticeRed, setShowNoticeRed] = useState(() => {
+    return localStorage.getItem('hide_temp_email_notice_red') !== 'true';
+  });
+  const [showNoticeYellow, setShowNoticeYellow] = useState(() => {
+    return localStorage.getItem('hide_temp_email_notice_yellow') !== 'true';
+  });
 
   // Pull to refresh states
   const [pullY, setPullY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
 
+  const [isGeneratingNew, setIsGeneratingNew] = useState(false);
+
+  // Custom Domain states
+  const [domains, setDomains] = useState<string[]>([]);
+  const [selectedDomain, setSelectedDomain] = useState('');
+  const [fetchingDomains, setFetchingDomains] = useState(false);
+
   useEffect(() => {
     initEmail();
+    fetchDomains();
   }, []);
+
+  const fetchDomains = async () => {
+    setFetchingDomains(true);
+    try {
+      const list = ['web-library.net'];
+      const res = await axios.get('https://api.mail.tm/domains');
+      const apiDomains = (res.data['hydra:member'] || []).map((d: any) => d.domain);
+      const uniqueDomains = Array.from(new Set([...list, ...apiDomains]));
+      setDomains(uniqueDomains);
+      if (uniqueDomains.length > 0) {
+        setSelectedDomain(uniqueDomains[0]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch domains from mail.tm", err);
+      setDomains(['web-library.net', 'bty.net']);
+      setSelectedDomain('web-library.net');
+    } finally {
+      setFetchingDomains(false);
+    }
+  };
+
+  const handleGenerateWithDomain = async (domainToUse?: string) => {
+    const targetDomain = domainToUse || selectedDomain;
+    if (!targetDomain) return;
+    setIsGeneratingNew(true);
+    try {
+      const authToken = localStorage.getItem('ff_token');
+      const res = await axios.post('/api/user/generate-temp-email', {
+        domain: targetDomain,
+        force: true
+      }, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      
+      const newEmail = res.data.temp_email;
+      const newPassword = res.data.temp_password;
+      
+      const rawUser = localStorage.getItem('ff_user');
+      let user = (rawUser && rawUser !== 'undefined') ? JSON.parse(rawUser) : {};
+      user.temp_email = newEmail;
+      user.temp_password = newPassword;
+      localStorage.setItem('ff_user', JSON.stringify(user));
+      
+      setEmail(newEmail);
+      setPassword(newPassword);
+      setMessages([]);
+      setSelectedMessage(null);
+      setMessageContent(null);
+      
+      try {
+        const tokenRes = await axios.post('https://api.mail.tm/token', {
+          address: newEmail,
+          password: newPassword
+        });
+        setToken(tokenRes.data.token);
+        fetchMessages(tokenRes.data.token);
+        alert(language === 'ar' ? 'تم إنشاء وتفعيل بريدك الجديد بنجاح!' : 'Your new email has been generated and activated successfully!');
+      } catch (authErr: any) {
+        console.error("Failed to login to new temp email", authErr);
+        alert(language === 'ar' ? 'تم حفظ البريد في خوادمنا ولكن فشل تسجيل الدخول لـ mail.tm' : 'Saved email on our servers but failed to log in to mail.tm.');
+      }
+    } catch (err: any) {
+      console.error("Failed to generate custom domain email", err);
+      const errMsg = err.response?.data?.message || err.message;
+      alert(language === 'ar' ? `فشل إنشاء البريد: ${errMsg}` : `Failed to generate email: ${errMsg}`);
+    } finally {
+      setIsGeneratingNew(false);
+    }
+  };
+
+  const handleGenerateNew = async () => {
+    if (selectedDomain) {
+      await handleGenerateWithDomain(selectedDomain);
+    } else {
+      setIsGeneratingNew(true);
+      try {
+        const authToken = localStorage.getItem('ff_token');
+        const res = await axios.post('/api/user/generate-temp-email', {
+          force: true
+        }, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        
+        const newEmail = res.data.temp_email;
+        const newPassword = res.data.temp_password;
+        
+        const rawUser = localStorage.getItem('ff_user');
+        let user = (rawUser && rawUser !== 'undefined') ? JSON.parse(rawUser) : {};
+        user.temp_email = newEmail;
+        user.temp_password = newPassword;
+        localStorage.setItem('ff_user', JSON.stringify(user));
+        
+        setEmail(newEmail);
+        setPassword(newPassword);
+        setMessages([]);
+        setSelectedMessage(null);
+        setMessageContent(null);
+        
+        try {
+          const tokenRes = await axios.post('https://api.mail.tm/token', {
+            address: newEmail,
+            password: newPassword
+          });
+          setToken(tokenRes.data.token);
+          fetchMessages(tokenRes.data.token);
+          alert(language === 'ar' ? 'تم إنشاء وتفعيل بريدك الجديد بنجاح!' : 'Your new email has been generated and activated successfully!');
+        } catch (authErr: any) {
+          console.error("Failed to login to new temp email", authErr);
+          alert(language === 'ar' ? 'تم حفظ البريد في خوادمنا ولكن فشل تسجيل الدخول لـ mail.tm' : 'Saved email on our servers but failed to log in to mail.tm.');
+        }
+      } catch (err: any) {
+        console.error("Failed to generate new email", err);
+        const errMsg = err.response?.data?.message || err.message;
+        alert(language === 'ar' ? `فشل إنشاء البريد: ${errMsg}` : `Failed to generate email: ${errMsg}`);
+      } finally {
+        setIsGeneratingNew(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -36,7 +169,8 @@ export default function TempEmail() {
   const initEmail = async () => {
     setLoading(true);
     try {
-      let user = JSON.parse(localStorage.getItem('ff_user') || '{}');
+      const rawUser = localStorage.getItem('ff_user');
+      let user = (rawUser && rawUser !== 'undefined') ? JSON.parse(rawUser) : {};
       const authToken = localStorage.getItem('ff_token');
 
       if (!user.temp_email || !user.temp_password) {
@@ -63,8 +197,34 @@ export default function TempEmail() {
           });
           setToken(tokenRes.data.token);
           fetchMessages(tokenRes.data.token);
-        } catch (authErr) {
+        } catch (authErr: any) {
           console.error("Failed to login to temp email", authErr);
+          if (authErr?.response?.status === 401) {
+            console.log("Unauthorized 401 detected, automatically regenerating temp email...");
+            try {
+              const res = await axios.post('/api/user/generate-temp-email', { force: true }, {
+                headers: { Authorization: `Bearer ${authToken}` }
+              });
+              const newEmail = res.data.temp_email;
+              const newPassword = res.data.temp_password;
+              
+              user.temp_email = newEmail;
+              user.temp_password = newPassword;
+              localStorage.setItem('ff_user', JSON.stringify(user));
+              
+              setEmail(newEmail);
+              setPassword(newPassword);
+              
+              const retryTokenRes = await axios.post('https://api.mail.tm/token', {
+                address: newEmail,
+                password: newPassword
+              });
+              setToken(retryTokenRes.data.token);
+              fetchMessages(retryTokenRes.data.token);
+            } catch (recreateErr) {
+              console.error("Failed to automatically regenerate temp email", recreateErr);
+            }
+          }
         }
       } else {
         console.error("No temp email found for this user in DB.");
@@ -238,21 +398,21 @@ export default function TempEmail() {
         ) : (
           <>
             {/* Email Address Card */}
-            <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
+            <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 animate-fade-in">
               <div className="flex flex-col md:flex-row items-center gap-4 justify-between">
                 <div className="flex items-center gap-3 w-full md:w-auto">
                   <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
                     <Globe className="h-6 w-6" />
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-sm font-semibold text-gray-500">{language === 'ar' ? 'البريد الخاص بك' : 'Your Private Email'}</p>
+                    <p className="text-sm font-semibold text-gray-500">{language === 'ar' ? 'YOUR HELP MAIL' : 'YOUR HELP MAIL'}</p>
                     <p className="font-black text-lg text-gray-900 truncate" dir="ltr">{email}</p>
                   </div>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
                    <button 
                      onClick={copyToClipboard}
-                     className="flex-1 md:flex-none flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-3 font-bold text-gray-700 hover:bg-gray-200 transition-colors"
+                     className="w-full md:w-auto flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-6 py-3.5 font-bold text-gray-700 hover:bg-gray-200 transition-colors active:scale-95 duration-150"
                    >
                      <Copy className="h-5 w-5" />
                      {language === 'ar' ? 'نسخ الإيميل' : 'Copy Email'}
@@ -261,14 +421,53 @@ export default function TempEmail() {
               </div>
             </div>
 
-            <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-sm font-bold text-red-700 flex items-start md:items-center gap-3 shadow-sm">
-              <div className="mt-0.5"><Mail className="h-5 w-5 text-red-500" /></div>
-              <p>
-                {language === 'ar' 
-                  ? 'تنويه: لا تشارك هذا البريد مع شخص آخر. يتم حذف سجل الرسائل وتفريغ الصندوق بعد مرور 30 ساعة من وصول الرسالة. يتم مسح السجلات تلقائياً كل 30 دقيقة للحفاظ على الخصوصية.' 
-                  : 'Notice: Do not share this email with another person. Messages log is cleared 30 hours after arrival. Messages are automatically wiped every 30 minutes to maintain your privacy.'}
-              </p>
-            </div>
+
+
+            {showNoticeRed && (
+              <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-sm font-bold text-red-700 flex items-start justify-between gap-3 shadow-sm mb-3">
+                <div className="flex items-start md:items-center gap-3 flex-1">
+                  <div className="mt-0.5 shrink-0"><Mail className="h-5 w-5 text-red-500" /></div>
+                  <p>
+                    {language === 'ar' 
+                      ? 'تنويه: لا تشارك هذا البريد مع شخص آخر للحفاظ على الخصوصية.' 
+                      : 'Notice: Do not share this email with another person to maintain your privacy.'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowNoticeRed(false);
+                    localStorage.setItem('hide_temp_email_notice_red', 'true');
+                  }}
+                  className="rounded-lg p-1 hover:bg-red-100 transition-colors shrink-0 -mt-1 md:mt-0"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4 text-red-600" />
+                </button>
+              </div>
+            )}
+
+            {showNoticeYellow && (
+              <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl text-sm font-bold text-amber-800 flex items-start justify-between gap-3 shadow-sm">
+                <div className="flex items-start md:items-center gap-3 flex-1">
+                  <div className="mt-0.5 shrink-0"><Mail className="h-5 w-5 text-amber-500" /></div>
+                  <p>
+                    {language === 'ar' 
+                      ? 'تنويه: يتم حذف سجل الرسائل وتفريغ الصندوق تلقائياً كل 30 ساعة.' 
+                      : 'Notice: Messages log is automatically wiped and cleared every 30 hours.'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowNoticeYellow(false);
+                    localStorage.setItem('hide_temp_email_notice_yellow', 'true');
+                  }}
+                  className="rounded-lg p-1 hover:bg-amber-100 transition-colors shrink-0 -mt-1 md:mt-0"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4 text-amber-700" />
+                </button>
+              </div>
+            )}
 
             {/* Inbox */}
             <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">

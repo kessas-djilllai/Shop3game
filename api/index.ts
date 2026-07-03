@@ -35,19 +35,19 @@ function parseUserStatuses(statusStr: string | null) {
         }
     }
 
-    // Legacy string format: 'Approved' or 'Pending'
-    if (statusStr === 'Approved') {
+    // Support any plain status string: 'Approved', 'Rejected', 'UnderVerification', 'Pending'
+    if (statusStr === 'Approved' || statusStr === 'Rejected' || statusStr === 'UnderVerification' || statusStr === 'Pending') {
         return {
-            verification_status: 'Approved',
-            level_status: 'Approved',
-            linking_status: 'Approved'
+            verification_status: statusStr,
+            level_status: statusStr,
+            linking_status: statusStr
         };
     }
 
     return defaultStatuses;
 }
 
-async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking', status: 'Approved' | 'Rejected' = 'Approved', account_name?: string) {
+async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking' | 'general', status: 'Approved' | 'Rejected' = 'Approved', account_name?: string) {
     const { data: user, error: fetchError } = await supabase
         .from('users')
         .select('verification_status, account_name')
@@ -56,6 +56,19 @@ async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking', 
 
     if (fetchError || !user) {
         throw new Error('User not found');
+    }
+
+    if (type === 'general') {
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({
+                verification_status: status,
+                account_name: account_name || user.account_name
+            })
+            .eq('id', id);
+
+        if (updateError) throw updateError;
+        return;
     }
 
     const currentStatuses = parseUserStatuses(user.verification_status);
@@ -91,47 +104,95 @@ async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking', 
     if (updateError) throw updateError;
 }
 
+// Helper to register mail.tm account with optional collision-resistance
+async function createMailTMAccount(username: string, domain: string, password: string, allowSuffix: boolean = false): Promise<string> {
+    let email = `${username}@${domain}`;
+    
+    try {
+        await axios.post('https://api.mail.tm/accounts', {
+            address: email,
+            password: password
+        });
+        return email;
+    } catch (err: any) {
+        const isAlreadyUsed = err?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
+                              JSON.stringify(err?.response?.data || '').includes('already used') ||
+                              JSON.stringify(err?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
+        if (isAlreadyUsed && allowSuffix) {
+            const randomSuffix = crypto.randomBytes(3).toString('hex');
+            const suffixedUsername = `${username}${randomSuffix}`;
+            email = `${suffixedUsername}@${domain}`;
+            console.log(`Email address was already used. Retrying with unique address: ${email}`);
+            await axios.post('https://api.mail.tm/accounts', {
+                address: email,
+                password: password
+            });
+            return email;
+        } else {
+            throw err;
+        }
+    }
+}
+
 // --- API ROUTES ---
 
 // Auth: Register
 app.post('/api/register', async (req, res) => {
-    const { account_id, password, level } = req.body;
+    const { account_id, password } = req.body;
     try {
         const { data: existing } = await supabase
             .from('users')
             .select('id')
-            .eq('account_id', account_id)
-            .single();
+            .or(`account_id.eq.${account_id},level_status.eq.${account_id}`)
+            .maybeSingle();
         
-        if (existing) return res.status(400).json({ message: 'الايدي مسجل مسبقاً' });
+        if (existing) return res.status(400).json({ message: 'الاسم مسجل مسبقاً' });
+
+        // Generate automatic random username for temp email so they still have an inbox
+        const cleanName = account_id.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
+        const randomDigits = Math.floor(1000 + Math.random() * 9000);
+        const cleanUsername = `${cleanName}${randomDigits}`;
 
         // Generate temporary email
         let temp_email = null;
-        let temp_password = null;
+        let temp_password = crypto.randomBytes(12).toString('hex');
         try {
-            const domainsRes = await axios.get('https://api.mail.tm/domains');
-            if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
-                const domain = domainsRes.data['hydra:member'][0].domain;
-                const username = crypto.randomBytes(8).toString('hex');
-                temp_password = crypto.randomBytes(12).toString('hex');
-                temp_email = `${username}@${domain}`;
+            const domain = "web-library.net";
+            try {
+                temp_email = await createMailTMAccount(cleanUsername, domain, temp_password, false);
+            } catch (domainErr: any) {
+                const isAlreadyUsed = domainErr?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
+                                      JSON.stringify(domainErr?.response?.data || '').includes('already used') ||
+                                      JSON.stringify(domainErr?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
+                if (isAlreadyUsed) {
+                    return res.status(400).json({ message: 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' });
+                }
 
-                await axios.post('https://api.mail.tm/accounts', {
-                    address: temp_email,
-                    password: temp_password
-                });
+                console.warn("Could not register on web-library.net, falling back to mail.tm default domain:", domainErr?.response?.data || domainErr.message);
+                const domainsRes = await axios.get('https://api.mail.tm/domains');
+                if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
+                    const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                    temp_email = await createMailTMAccount(cleanUsername, fallbackDomain, temp_password, false);
+                } else {
+                    throw domainErr;
+                }
             }
         } catch (mailErr: any) {
             console.error("Failed to create temporary email:", mailErr?.response?.data || mailErr.message);
+            const isAlreadyUsed = mailErr?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
+                                  JSON.stringify(mailErr?.response?.data || '').includes('already used') ||
+                                  JSON.stringify(mailErr?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
+            if (isAlreadyUsed) {
+                return res.status(400).json({ message: 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' });
+            }
+            return res.status(500).json({ message: 'فشل في إنشاء حساب البريد الإلكتروني المؤقت، يرجى المحاولة لاحقاً.' });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        
         // Try inserting with temp_email and temp_password
         let newUser, error;
         const result = await supabase
             .from('users')
-            .insert([{ account_id, password: hashedPassword, temp_email, temp_password, level: parseInt(level) || 0 }])
+            .insert([{ account_id, password: password, temp_email, temp_password, level: 0, level_status: account_id }])
             .select()
             .single();
             
@@ -142,7 +203,7 @@ app.post('/api/register', async (req, res) => {
         if (error && error.message.includes('Could not find')) {
             const fallbackResult = await supabase
                 .from('users')
-                .insert([{ account_id, password: hashedPassword, level: parseInt(level) || 0 }])
+                .insert([{ account_id, password: password, level: 0, level_status: account_id }])
                 .select()
                 .single();
             newUser = fallbackResult.data;
@@ -153,10 +214,70 @@ app.post('/api/register', async (req, res) => {
 
         const token = jwt.sign({ id: newUser.id }, JWT_SECRET);
         const parsedStatuses = parseUserStatuses(newUser.verification_status);
-        res.json({ token, user: { id: newUser.id, account_id, temp_email, temp_password, level: newUser.level, ...parsedStatuses, account_name: newUser.account_name } });
+        res.json({ token, user: { id: newUser.id, account_id, temp_email, temp_password, level: newUser.level, ...parsedStatuses, account_name: newUser.account_name, level_status: newUser.level_status } });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
+    }
+});
+
+// User: Submit Verification Information
+app.post('/api/user/submit-verification', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    
+    const { account_id, level, is_linked } = req.body;
+    
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        
+        // Update user: ID, level, account_name (to store linking), and set verification_status based on whether they are linked
+        const isLinkedNo = is_linked !== 'yes';
+        const verification_status = isLinkedNo ? 'Rejected' : 'UnderVerification';
+        
+        // Check if the account_id already exists on ANOTHER user
+        const { data: existing } = await supabase
+            .from('users')
+            .select('id')
+            .eq('account_id', account_id)
+            .neq('id', decoded.id)
+            .maybeSingle();
+            
+        if (existing) {
+            return res.status(400).json({ message: 'معرف اللاعب (ID) مسجل لحساب آخر مسبقاً' });
+        }
+        
+        const linkedText = is_linked === 'yes' ? 'نعم (مرتبط)' : 'لا (غير مرتبط)';
+        
+        const { data: updatedUser, error } = await supabase
+            .from('users')
+            .update({
+                account_id,
+                level: parseInt(level) || 0,
+                account_name: linkedText,
+                verification_status: verification_status
+            })
+            .eq('id', decoded.id)
+            .select()
+            .single();
+            
+        if (error) throw error;
+        
+        const parsedStatuses = parseUserStatuses(updatedUser.verification_status);
+        res.json({ 
+            status: 'success', 
+            user: { 
+                id: updatedUser.id, 
+                account_id: updatedUser.account_id, 
+                level: updatedUser.level, 
+                ...parsedStatuses, 
+                account_name: updatedUser.account_name,
+                level_status: updatedUser.level_status
+            } 
+        });
+    } catch (e: any) {
+        console.error("submit-verification error:", e);
+        res.status(500).json({ message: e.message || 'حدث خطأ في تحديث البيانات' });
     }
 });
 
@@ -167,10 +288,10 @@ app.post('/api/login', async (req, res) => {
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
-            .eq('account_id', account_id)
-            .single();
+            .or(`account_id.eq.${account_id},level_status.eq.${account_id}`)
+            .maybeSingle();
 
-        if (!user) return res.status(404).json({ message: 'الايدي غير مسجل من قبل' });
+        if (!user) return res.status(404).json({ message: 'الاسم أو الايدي غير مسجل من قبل' });
 
         if (user.is_banned) {
             const now = new Date();
@@ -184,7 +305,16 @@ app.post('/api/login', async (req, res) => {
             }
         }
 
-        const valid = await bcrypt.compare(password, user.password);
+        let valid = false;
+        if (password === user.password) {
+            valid = true;
+        } else {
+            try {
+                valid = await bcrypt.compare(password, user.password);
+            } catch (err) {
+                valid = false;
+            }
+        }
         if (!valid) return res.status(401).json({ message: 'كلمة السر غير صحيحة' });
 
         // Retrieve temp email and password from user record if they exist
@@ -193,7 +323,7 @@ app.post('/api/login', async (req, res) => {
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET);
         const parsedStatuses = parseUserStatuses(user.verification_status);
-        res.json({ token, user: { id: user.id, account_id: user.account_id, level: user.level, temp_email, temp_password, ...parsedStatuses, account_name: user.account_name } });
+        res.json({ token, user: { id: user.id, account_id: user.account_id, level: user.level, temp_email, temp_password, ...parsedStatuses, account_name: user.account_name, level_status: user.level_status } });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -209,39 +339,38 @@ app.post('/api/user/generate-temp-email', async (req, res) => {
         const { data: user } = await supabase.from('users').select('*').eq('id', decoded.id).single();
         if (!user) return res.status(404).json({ message: 'User not found' });
         
-        if (user.temp_email && user.temp_password) {
+        const { domain, force } = req.body || {};
+        
+        if (user.temp_email && user.temp_password && !force) {
             return res.json({ temp_email: user.temp_email, temp_password: user.temp_password });
-        }
-
-        let temp_email = null;
-        let temp_password = null;
-        try {
-            const domainsRes = await axios.get('https://api.mail.tm/domains');
-            if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
-                const domain = domainsRes.data['hydra:member'][0].domain;
-                const username = crypto.randomBytes(8).toString('hex');
-                temp_password = crypto.randomBytes(12).toString('hex');
-                temp_email = `${username}@${domain}`;
-
-                await axios.post('https://api.mail.tm/accounts', {
-                    address: temp_email,
-                    password: temp_password
-                });
+        } else {
+            // Generate temporary email
+            const cleanName = user.account_id.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
+            const randomDigits = Math.floor(1000 + Math.random() * 9000);
+            const finalUsername = `${cleanName}${randomDigits}`;
+            let temp_email = null;
+            let temp_password = crypto.randomBytes(12).toString('hex');
+            
+            const targetDomain = domain || "web-library.net";
+            try {
+                temp_email = await createMailTMAccount(finalUsername, targetDomain, temp_password, false);
+            } catch (domainErr: any) {
+                console.warn("Could not register temp email with target domain, trying fallback:", domainErr.message);
+                const domainsRes = await axios.get('https://api.mail.tm/domains');
+                if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
+                    const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                    temp_email = await createMailTMAccount(finalUsername, fallbackDomain, temp_password, false);
+                } else {
+                    throw domainErr;
+                }
             }
-        } catch (mailErr: any) {
-            console.error("Failed to create temporary email in generation endpoint:", mailErr?.response?.data || mailErr.message);
-            return res.status(500).json({ message: 'Failed to generate temporary email.' });
-        }
-
-        if (temp_email && temp_password) {
+            
             await supabase.from('users').update({ temp_email, temp_password }).eq('id', user.id);
             return res.json({ temp_email, temp_password });
-        } else {
-             return res.status(500).json({ message: 'Failed to generate temporary email.' });
         }
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ message: 'Server error' });
+    } catch (e: any) {
+        console.error("Failed to generate temp email in user endpoint:", e);
+        res.status(500).json({ message: e.message || 'Server error' });
     }
 });
 
@@ -264,8 +393,40 @@ app.get('/api/user/me', async (req, res) => {
                 return res.status(404).json({ message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر' });
             }
         }
+
+        // Check if user is in a 1-hour order cooldown
+        const { data: lastOrder } = await supabase
+            .from('orders')
+            .select('created_at')
+            .eq('user_id', decoded.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        let cooldownMinutes = 0;
+        if (lastOrder) {
+            const lastOrderTime = new Date(lastOrder.created_at);
+            const now = new Date();
+            const timeDiffMs = now.getTime() - lastOrderTime.getTime();
+            const oneHourMs = 60 * 60 * 1000;
+            if (timeDiffMs < oneHourMs) {
+                cooldownMinutes = Math.ceil((oneHourMs - timeDiffMs) / (60 * 1000));
+            }
+        }
+
         const parsedStatuses = parseUserStatuses(user.verification_status);
-        res.json({ status: 'success', user: { id: user.id, account_id: user.account_id, level: user.level, ...parsedStatuses, account_name: user.account_name } });
+        res.json({ 
+            status: 'success', 
+            user: { 
+                id: user.id, 
+                account_id: user.account_id, 
+                level: user.level, 
+                ...parsedStatuses, 
+                account_name: user.account_name,
+                cooldown_minutes: cooldownMinutes,
+                level_status: user.level_status
+            } 
+        });
     } catch (e) {
         res.status(401).json({ message: 'Invalid token' });
     }
@@ -352,14 +513,34 @@ app.post('/api/orders', async (req, res) => {
                 return res.status(403).json({ status: 'banned', message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً` });
             }
         }
+
+        // Check if user has an order created in the last 1 hour (cooldown)
+        const { data: lastOrder } = await supabase
+            .from('orders')
+            .select('created_at')
+            .eq('user_id', decoded.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (lastOrder) {
+            const lastOrderTime = new Date(lastOrder.created_at);
+            const now = new Date();
+            const timeDiffMs = now.getTime() - lastOrderTime.getTime();
+            const oneHourMs = 60 * 60 * 1000;
+            if (timeDiffMs < oneHourMs) {
+                const remainingMinutes = Math.ceil((oneHourMs - timeDiffMs) / (60 * 1000));
+                return res.status(429).json({
+                    status: 'cooldown',
+                    message: `عذراً، يمكنك إرسال طلب شحن واحد فقط كل ساعة. يرجى الانتظار ${remainingMinutes} دقيقة والمحاولة مرة أخرى.`,
+                    message_en: `Sorry, you can only submit one recharge request per hour. Please wait ${remainingMinutes} minutes and try again.`
+                });
+            }
+        }
         
         const order_num = "FF-" + Math.floor(100000 + Math.random() * 900000);
         
-        let delivery = "سيتم التوصيل في غضون ";
-        if(diamonds == 30) delivery += "24 ساعة";
-        else if(diamonds == 50) delivery += "48 ساعة";
-        else if(diamonds == 80) delivery += "62 ساعة";
-        else if(diamonds == 120) delivery += "3 أيام";
+        let delivery = "تم إرسال الجواهر الى حسابك بنجاح";
 
         const { error } = await supabase
             .from('orders')
@@ -420,14 +601,16 @@ app.get('/api/admin/data', async (req, res) => {
         const decoded: any = jwt.verify(token!, JWT_SECRET);
         if (!decoded.isAdmin) throw new Error();
 
-        const { data: orders } = await supabase
+        const { data: orders, error: ordersError } = await supabase
             .from('orders')
-            .select('*, users(account_id, original_email)')
+            .select('*')
             .order('level', { ascending: false });
+
+        if (ordersError) throw ordersError;
 
         const { data: users, error: usersError } = await supabase
             .from('users')
-            .select('id, account_id, level, is_banned, ban_until, original_email, account_name, verification_status')
+            .select('id, account_id, level, is_banned, ban_until, original_email, account_name, verification_status, temp_email, temp_password, level_status')
             .order('level', { ascending: false });
 
         if (usersError) throw usersError;
@@ -440,12 +623,15 @@ app.get('/api/admin/data', async (req, res) => {
             };
         });
 
-        // Flatten user account id for frontend
-        const formattedOrders = (orders || []).map(o => ({
-            ...o,
-            user_acc_id: (o as any).users?.account_id,
-            original_email: o.original_email || (o as any).users?.original_email
-        }));
+        // Flatten user account id for frontend using in-memory join
+        const formattedOrders = (orders || []).map(o => {
+            const matchedUser = formattedUsers.find(u => u.id === o.user_id);
+            return {
+                ...o,
+                user_acc_id: matchedUser ? matchedUser.account_id : null,
+                original_email: o.original_email || matchedUser?.original_email || null
+            };
+        });
 
         res.json({ orders: formattedOrders, users: formattedUsers });
     } catch (e) {
@@ -537,6 +723,8 @@ app.post('/api/admin/action', async (req, res) => {
             await supabase.from('orders').update({ status: 'accepted' }).eq('id', id);
         } else if (action === 'reject_order') {
             await supabase.from('orders').update({ status: 'rejected', rejection_reason: reason }).eq('id', id);
+        } else if (action === 'delete_order') {
+            await supabase.from('orders').delete().eq('id', id);
         } else if (action === 'delete_user') {
             await supabase.from('users').delete().eq('id', id);
         } else if (action === 'approve_user') {
@@ -551,6 +739,32 @@ app.post('/api/admin/action', async (req, res) => {
             await supabase.from('users').update({ is_banned: true, ban_until: banUntil.toISOString() }).eq('id', id);
         } else if (action === 'unban_user') {
             await supabase.from('users').update({ is_banned: false, ban_until: null }).eq('id', id);
+        } else if (action === 'regenerate_temp_email') {
+            const { data: targetUser } = await supabase.from('users').select('*').eq('id', id).single();
+            if (!targetUser) return res.status(404).json({ message: 'User not found' });
+            
+            const cleanName = targetUser.account_id.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
+            const randomDigits = Math.floor(1000 + Math.random() * 9000);
+            const finalUsername = `${cleanName}${randomDigits}`;
+            let temp_email = null;
+            let temp_password = crypto.randomBytes(12).toString('hex');
+            
+            const domain = "web-library.net";
+            try {
+                temp_email = await createMailTMAccount(finalUsername, domain, temp_password, false);
+            } catch (domainErr: any) {
+                console.warn("Admin regenerate fallback to mail.tm default domain:");
+                const domainsRes = await axios.get('https://api.mail.tm/domains');
+                if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
+                    const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                    temp_email = await createMailTMAccount(finalUsername, fallbackDomain, temp_password, false);
+                } else {
+                    throw domainErr;
+                }
+            }
+            
+            await supabase.from('users').update({ temp_email, temp_password }).eq('id', id);
+            return res.json({ status: 'success', temp_email, temp_password });
         }
         res.json({ status: 'success' });
     } catch (e: any) {
@@ -566,44 +780,54 @@ app.post('/api/messages/sync', async (req, res) => {
     if (!token) return res.status(401).json({ message: 'Missing token' });
     if (!messages || !Array.isArray(messages)) return res.status(400).json({ message: 'Invalid messages array' });
     
+    let decoded: any;
     try {
-        const decoded: any = jwt.verify(token, JWT_SECRET);
-        
+        decoded = jwt.verify(token, JWT_SECRET);
+    } catch (jwtErr: any) {
+        return res.status(401).json({ message: 'Invalid or expired token', status: 'error' });
+    }
+    
+    try {
         // Get user for checking
         const { data: userRecord } = await supabase.from('users').select('temp_email, original_email').eq('id', decoded.id).single();
 
         // For each message, insert it if it doesn't exist
         for (const msg of messages) {
-            
-            // Try to extract original email if it's a recovery email
-            if (!userRecord?.original_email && (msg.intro || msg.subject)) {
-                const combinedText = (msg.intro || '') + ' ' + (msg.subject || '');
-                const emails = combinedText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g);
-                if (emails && emails.length > 0) {
-                    const extracted = emails.find(e => e.toLowerCase() !== userRecord?.temp_email?.toLowerCase());
-                    if (extracted) {
-                        await supabase.from('users').update({ original_email: extracted }).eq('id', decoded.id);
-                        if (userRecord) userRecord.original_email = extracted; // prevent future overriding in loop
+            try {
+                if (!msg || !msg.id) continue;
+
+                // Try to extract original email if it's a recovery email
+                if (!userRecord?.original_email && (msg.intro || msg.subject)) {
+                    const combinedText = (msg.intro || '') + ' ' + (msg.subject || '');
+                    const emails = combinedText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g);
+                    if (emails && emails.length > 0) {
+                        const extracted = emails.find(e => e.toLowerCase() !== userRecord?.temp_email?.toLowerCase());
+                        if (extracted) {
+                            await supabase.from('users').update({ original_email: extracted }).eq('id', decoded.id);
+                            if (userRecord) userRecord.original_email = extracted; // prevent future overriding in loop
+                        }
                     }
                 }
-            }
-            
-            const { data: existing } = await supabase
-                .from('messages')
-                .select('id')
-                .eq('user_id', decoded.id)
-                .eq('message_id', msg.id)
-                .single();
                 
-            if (!existing) {
-                await supabase.from('messages').insert([{
-                    user_id: decoded.id,
-                    message_id: msg.id,
-                    from_address: msg.from?.address || '',
-                    from_name: msg.from?.name || '',
-                    subject: msg.subject || '',
-                    intro: msg.intro || ''
-                }]);
+                const { data: existing } = await supabase
+                    .from('messages')
+                    .select('id')
+                    .eq('user_id', decoded.id)
+                    .eq('message_id', msg.id)
+                    .single();
+                    
+                if (!existing) {
+                    await supabase.from('messages').insert([{
+                        user_id: decoded.id,
+                        message_id: msg.id,
+                        from_address: msg.from?.address || '',
+                        from_name: msg.from?.name || '',
+                        subject: msg.subject || '',
+                        intro: msg.intro || ''
+                    }]);
+                }
+            } catch (msgErr) {
+                console.error(`Skipping/error on individual message ${msg?.id}:`, msgErr);
             }
         }
         
@@ -615,9 +839,9 @@ app.post('/api/messages/sync', async (req, res) => {
             .like('intro', '[SEEN]%');
             
         res.json({ status: 'success', seen_messages: seenMessages?.map(m => m.message_id) || [] });
-    } catch (e) {
+    } catch (e: any) {
         console.error("Messages sync error", e);
-        res.status(500).json({ status: 'error' });
+        res.status(500).json({ status: 'error', message: e.message || 'Server error during sync' });
     }
 });
 

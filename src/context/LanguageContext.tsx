@@ -92,8 +92,8 @@ const translations: Translations = {
     'rejected': 'مرفوض',
     'pending': 'قيد الانتظار',
     'rejection_reason': 'سبب الرفض:',
-    'waiting_review': 'يرجى الانتظار، جاري مراجعة طلبك من قبل المختصين...',
-    'account_id': 'معرّف الحساب (ID)',
+    'waiting_review': 'يرجى الانتظار، جاري مراجعة طلبك من قبل النظام',
+    'account_id': 'الاسم',
     'account_status': 'حالة الحساب',
     'active': 'نشط وصالح',
     'logout': 'تسجيل الخروج'
@@ -182,7 +182,7 @@ const translations: Translations = {
     'pending': 'Pending',
     'rejection_reason': 'Reason:',
     'waiting_review': 'Please wait, your order is being reviewed by specialists...',
-    'account_id': 'Account ID',
+    'account_id': 'Name',
     'account_status': 'Account Status',
     'active': 'Active & Valid',
     'logout': 'Logout'

@@ -7,6 +7,7 @@ import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
 import Admin from './pages/Admin';
 import TempEmail from './pages/TempEmail';
+import LiveFeed from './pages/LiveFeed';
 import { LanguageProvider } from './context/LanguageContext';
 import BottomNavigation from './components/BottomNavigation';
 import './index.css';
@@ -24,7 +25,13 @@ const AuthGuard = ({ children }: { children: ReactNode }) => {
         axios.get('/api/user/me', { headers: { Authorization: `Bearer ${token}` } })
           .then(res => {
             if (res.data?.user) {
-              const current = JSON.parse(localStorage.getItem('ff_user') || '{}');
+              const rawCurrent = localStorage.getItem('ff_user');
+              let current = {};
+              if (rawCurrent && rawCurrent !== 'undefined') {
+                try {
+                  current = JSON.parse(rawCurrent);
+                } catch (e) {}
+              }
               localStorage.setItem('ff_user', JSON.stringify({ ...current, ...res.data.user }));
             }
           })
@@ -105,6 +112,9 @@ export default function App() {
             } />
             <Route path="/email" element={
               <AuthGuard><TempEmail /></AuthGuard>
+            } />
+            <Route path="/live-feed" element={
+              <AuthGuard><LiveFeed /></AuthGuard>
             } />
             
             <Route path="/admin" element={<Admin />} />

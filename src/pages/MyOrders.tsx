@@ -8,6 +8,7 @@ export default function MyOrders() {
   const { t, language } = useLanguage();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'rejected'>('pending');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,9 +34,70 @@ export default function MyOrders() {
     }
   };
 
+  const pendingOrders = orders.filter(o => o.status !== 'accepted' && o.status !== 'rejected');
+  const acceptedOrders = orders.filter(o => o.status === 'accepted');
+  const rejectedOrders = orders.filter(o => o.status === 'rejected');
+
+  const displayedOrders = activeTab === 'pending' 
+    ? pendingOrders 
+    : activeTab === 'accepted' 
+      ? acceptedOrders 
+      : rejectedOrders;
+
   return (
     <div className="min-h-screen w-full relative bg-[#F8F9FA] p-4 md:p-8 font-sans pb-28" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <div className="relative z-10 mx-auto max-w-lg pt-4">
+
+        {/* Modern Segmented Navigation Tabs */}
+        {!loading && orders.length > 0 && (
+          <div className="mb-5 flex p-1 bg-gray-100 rounded-[20px] border border-gray-200/40 relative">
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`flex-1 py-3 text-center text-[12px] font-black rounded-[16px] transition-all relative z-10 flex items-center justify-center gap-1 ${
+                activeTab === 'pending'
+                  ? 'bg-white text-[#CD1212] shadow-sm shadow-gray-200/50'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <span>{language === 'ar' ? 'قيد الانتظار' : 'Pending'}</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded-full font-black ${
+                activeTab === 'pending' ? 'bg-red-50 text-[#CD1212]' : 'bg-gray-200/60 text-gray-500'
+              }`}>
+                {pendingOrders.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('accepted')}
+              className={`flex-1 py-3 text-center text-[12px] font-black rounded-[16px] transition-all relative z-10 flex items-center justify-center gap-1 ${
+                activeTab === 'accepted'
+                  ? 'bg-white text-emerald-600 shadow-sm shadow-gray-200/50'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <span>{language === 'ar' ? 'المقبولة' : 'Accepted'}</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded-full font-black ${
+                activeTab === 'accepted' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-200/60 text-gray-500'
+              }`}>
+                {acceptedOrders.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('rejected')}
+              className={`flex-1 py-3 text-center text-[12px] font-black rounded-[16px] transition-all relative z-10 flex items-center justify-center gap-1 ${
+                activeTab === 'rejected'
+                  ? 'bg-white text-red-600 shadow-sm shadow-gray-200/50'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <span>{language === 'ar' ? 'المرفوضة' : 'Rejected'}</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded-full font-black ${
+                activeTab === 'rejected' ? 'bg-red-50 text-red-600' : 'bg-gray-200/60 text-gray-500'
+              }`}>
+                {rejectedOrders.length}
+              </span>
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="py-20 text-center text-gray-400 font-bold">{t('loading')}</div>
@@ -44,9 +106,21 @@ export default function MyOrders() {
             <Clock className="mx-auto mb-4 h-12 w-12 opacity-20" />
             <p className="font-bold">{t('no_orders')}</p>
           </div>
+        ) : displayedOrders.length === 0 ? (
+          <div className="py-20 text-center text-gray-400">
+            <Clock className="mx-auto mb-4 h-12 w-12 opacity-20" />
+            <p className="font-bold">
+              {activeTab === 'pending'
+                ? (language === 'ar' ? 'لا توجد طلبات قيد الانتظار حالياً' : 'No pending orders currently')
+                : activeTab === 'accepted'
+                  ? (language === 'ar' ? 'لا توجد طلبات مقبولة حالياً' : 'No accepted orders currently')
+                  : (language === 'ar' ? 'لا توجد طلبات مرفوضة حالياً' : 'No rejected orders currently')
+              }
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
-            {orders.map((o, idx) => (
+            {displayedOrders.map((o) => (
               <div
                 key={o.id}
                 className={`rounded-2xl border-l-[6px] bg-white p-5 shadow-sm border ${

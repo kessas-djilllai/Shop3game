@@ -12,6 +12,7 @@ export default function LoginRegister() {
   const [accountId, setAccountId] = useState('');
   const [password, setPassword] = useState('');
   const [level, setLevel] = useState('');
+  const [username, setUsername] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,18 +28,16 @@ export default function LoginRegister() {
   }, [navigate]);
 
   const handleAuth = async () => {
-    if (!accountId || !password || (!isLogin && !level)) {
+    if (!accountId || !password) {
       setError(t('fill_required_data') || 'يرجى ملأ جميع الحقول');
       return;
     }
     
-    if (!isLogin && isNaN(Number(level))) {
-      setError(language === 'ar' ? 'المستوى يجب أن يكون رقماً' : 'Level must be a number');
-      return;
-    }
-    
-    if (!/^\d{9,}$/.test(accountId)) {
-      setError(language === 'ar' ? 'معرّف اللاعب يجب أن يكون 9 أرقام على الأقل' : 'Player ID must be at least 9 digits');
+    if (accountId.trim().length < 3) {
+      setError(isLogin
+        ? (language === 'ar' ? 'الاسم أو معرّف اللاعب يجب أن يكون 3 أحرف على الأقل' : 'Name or Player ID must be at least 3 characters')
+        : (language === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters')
+      );
       return;
     }
 
@@ -68,8 +67,7 @@ export default function LoginRegister() {
     
     try {
       const endpoint = isLogin ? '/api/login' : '/api/register';
-      const reqBody: any = { account_id: accountId, password };
-      if (!isLogin) reqBody.level = level;
+      const reqBody: any = { account_id: accountId.trim(), password };
       const res = await axios.post(endpoint, reqBody);
       
       localStorage.setItem('ff_token', res.data.token);
@@ -129,13 +127,19 @@ export default function LoginRegister() {
 
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700">{t('id')}</label>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">
+                {isLogin 
+                  ? (language === 'ar' ? 'الاسم أو معرف اللاعب (ID)' : 'Name or Player ID')
+                  : (language === 'ar' ? 'الاسم' : 'Name')}
+              </label>
               <input 
                 type="text" 
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
                 className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
-                placeholder="يرجى إدخال معرّف اللاعب"
+                placeholder={isLogin 
+                  ? (language === 'ar' ? "يرجى إدخال الاسم أو معرف اللاعب (ID)" : "Please enter your name or Player ID")
+                  : (language === 'ar' ? "يرجى إدخال الاسم" : "Please enter your name")}
               />
             </div>
             <div>
@@ -157,19 +161,6 @@ export default function LoginRegister() {
                 </button>
               </div>
             </div>
-
-            {!isLogin && (
-              <div>
-                <label className="mb-1.5 block text-sm font-bold text-gray-700">{language === 'ar' ? 'المستوى' : 'Level'}</label>
-                <input 
-                  type="text" 
-                  value={level}
-                  onChange={(e) => setLevel(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
-                  placeholder={language === 'ar' ? "يرجى إدخال مستوى حسابك" : "Please enter your account level"}
-                />
-              </div>
-            )}
 
             {error && <p className="text-center text-sm font-bold text-red-500">{error}</p>}
 
