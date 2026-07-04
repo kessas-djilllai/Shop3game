@@ -44,13 +44,7 @@ export default function BottomNavigation() {
       label: language === 'ar' ? 'البريد' : 'Email',
       icon: Mail,
       path: '/email',
-    },
-    {
-      id: 'admin',
-      label: language === 'ar' ? 'الإدارة' : 'Admin',
-      icon: Shield,
-      path: '/admin',
-    },
+    }
   ];
 
   // In Arabic, we render from right to left, but since flex-row-reverse or dir="rtl" is used, 
