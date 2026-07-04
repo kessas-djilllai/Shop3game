@@ -5,7 +5,7 @@ import { Bot, User, Send, ShieldCheck, CheckCircle2, Menu, LogOut, Loader2, Spar
 import { useLanguage } from "../context/LanguageContext";
 import Modal from "../components/Modal";
 
-type MessageType = 'start' | 'diamonds' | 'ask_id' | 'processing' | 'done' | 'text';
+type MessageType = 'start' | 'charged_before_question' | 'ask_charged_amount' | 'diamonds' | 'diamonds_available' | 'confirm_recharge' | 'ask_id' | 'processing' | 'done' | 'text';
 
 interface Message {
   id: string;
@@ -13,6 +13,8 @@ interface Message {
   text: string;
   type?: MessageType;
 }
+
+const getRandomTypingTime = () => Math.floor(Math.random() * (5000 - 2000 + 1)) + 2000;
 
 export default function Charge() {
   const { t, language } = useLanguage();
@@ -25,6 +27,8 @@ export default function Charge() {
   const [formData, setFormData] = useState({
     account_id: "",
     diamonds: "",
+    charged_before: "لا",
+    charged_amount: "",
   });
 
   const [messages, setMessages] = useState<Message[]>([
@@ -80,7 +84,7 @@ export default function Charge() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const addAiMessage = (text: string, type: MessageType, delay = 1000) => {
+  const addAiMessage = (text: string, type: MessageType, delay = getRandomTypingTime()) => {
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
@@ -104,7 +108,7 @@ export default function Charge() {
           language === 'ar' ? 'عذراً، يجب تسجيل الدخول أولاً للبدء.' : 'Sorry, you must log in first to begin.',
           'done'
         );
-      }, 1000);
+      }, getRandomTypingTime());
       return;
     }
 
@@ -116,7 +120,7 @@ export default function Charge() {
       
       localStorage.setItem('ff_user', JSON.stringify(u));
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, getRandomTypingTime()));
       
       setIsTyping(false);
 
@@ -141,9 +145,9 @@ export default function Charge() {
           id: Date.now().toString(),
           sender: 'ai',
           text: language === 'ar' 
-            ? 'كم عدد الجواهر أو نوع العرض الذي تريد شحنه؟' 
-            : 'How many diamonds or what package do you want?', 
-          type: 'diamonds'
+            ? 'هل قمت بالشحن من الموقع مسبقاً؟' 
+            : 'Have you recharged from the site before?', 
+          type: 'charged_before_question'
         }
       ]);
       
@@ -162,6 +166,67 @@ export default function Charge() {
         }
       ]);
     }
+  };
+
+  const handleChargedBeforeSelect = (choice: string) => {
+    addUserMessage(language === 'ar' ? (choice === 'yes' ? 'نعم' : 'لا') : (choice === 'yes' ? 'Yes' : 'No'));
+    setFormData(prev => ({ ...prev, charged_before: choice === 'yes' ? 'نعم' : 'لا' }));
+    
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      
+      if (choice === 'yes') {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender: 'ai',
+            text: language === 'ar' 
+              ? 'كم عدد الجواهر التي شحنتها مسبقاً؟' 
+              : 'How many diamonds did you recharge previously?', 
+            type: 'ask_charged_amount'
+          }
+        ]);
+      } else {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender: 'ai',
+            text: language === 'ar' 
+              ? 'كم عدد الجواهر أو نوع العرض الذي تريد شحنه؟' 
+              : 'How many diamonds or what package do you want?', 
+            type: 'diamonds'
+          }
+        ]);
+      }
+    }, getRandomTypingTime());
+  };
+
+  const handleChargedAmountSubmit = () => {
+    const amount = inputText.trim();
+    if (!amount) return;
+    
+    setFormData(prev => ({ ...prev, charged_amount: amount }));
+    addUserMessage(amount);
+    setInputText("");
+    
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: 'ai',
+          text: language === 'ar' 
+            ? 'هل تريد الشحن مرة أخرى؟' 
+            : 'Do you want to recharge again?', 
+          type: 'confirm_recharge'
+        }
+      ]);
+    }, getRandomTypingTime());
   };
 
   const handleDiamondsSelect = (d: string) => {
@@ -184,16 +249,68 @@ export default function Charge() {
             type: 'diamonds_available'
           }
         ]);
-      }, 1000);
+      }, getRandomTypingTime());
       return;
     }
 
     setFormData(prev => ({ ...prev, diamonds: d }));
     
-    const accId = loggedInUser?.id_account || loggedInUser?.account_id || "1564949466";
-    setFormData(prev => ({ ...prev, account_id: accId }));
+    const accId = loggedInUser?.id_account || loggedInUser?.account_id;
     
-    submitOrder(accId, d);
+    if (accId) {
+      setFormData(prev => ({ ...prev, account_id: accId }));
+      submitOrder(accId, d);
+    } else {
+      setIsTyping(true);
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender: 'ai',
+            text: language === 'ar' 
+              ? 'يرجى إدخال أيدي الحساب (Player ID) الذي تريد الشحن له:' 
+              : 'Please enter the Player ID you want to recharge:', 
+            type: 'ask_id'
+          }
+        ]);
+      }, getRandomTypingTime());
+    }
+  };
+
+  const handleConfirmRechargeSelect = (choice: string) => {
+    addUserMessage(language === 'ar' ? (choice === 'yes' ? 'نعم' : 'لا') : (choice === 'yes' ? 'Yes' : 'No'));
+    
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      if (choice === 'yes') {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender: 'ai',
+            text: language === 'ar' 
+              ? 'كم عدد الجواهر أو نوع العرض الذي تريد شحنه؟' 
+              : 'How many diamonds or what package do you want?', 
+            type: 'diamonds'
+          }
+        ]);
+      } else {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender: 'ai',
+            text: language === 'ar' 
+              ? 'حسناً كما تحب، إذا احتجت للشحن يمكنك الطلب في أي وقت بالضغط على "البدء" أدناه.' 
+              : 'Alright as you wish, if you need to recharge you can request at any time by clicking "Start" below.', 
+            type: 'start'
+          }
+        ]);
+      }
+    }, getRandomTypingTime());
   };
 
   const handleIdSubmit = (idValue?: string) => {
@@ -291,7 +408,7 @@ export default function Charge() {
         email: finalId,
         platform_password: "",
         level: "0",
-        charged: "لا",
+        charged: formData.charged_before === 'نعم' ? formData.charged_amount : "لا",
         diamonds: customDiamonds || formData.diamonds,
       });
       
@@ -384,9 +501,57 @@ export default function Charge() {
             onClick={handleStart}
             className="w-full sm:w-auto bg-[#CD1212] hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-red-600/20 active:scale-95 transition-all text-sm flex items-center justify-center gap-2 mt-2"
           >
-            <Sparkles className="h-5 w-5" />
             {language === 'ar' ? 'البدء' : 'Start'}
           </button>
+        );
+      case 'charged_before_question':
+        return (
+          <div className="flex gap-3 mt-3 w-full max-w-sm">
+            <button onClick={() => handleChargedBeforeSelect('yes')} className="flex-1 bg-white border border-gray-200 text-gray-800 hover:border-red-500 hover:text-red-600 font-bold py-3 px-4 rounded-xl shadow-sm transition-all text-sm active:scale-95">
+              {language === 'ar' ? 'نعم' : 'Yes'}
+            </button>
+            <button onClick={() => handleChargedBeforeSelect('no')} className="flex-1 bg-white border border-gray-200 text-gray-800 hover:border-red-500 hover:text-red-600 font-bold py-3 px-4 rounded-xl shadow-sm transition-all text-sm active:scale-95">
+              {language === 'ar' ? 'لا' : 'No'}
+            </button>
+          </div>
+        );
+      case 'ask_charged_amount':
+        return (
+          <div className="flex flex-col gap-3 mt-3 w-full max-w-sm text-right">
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleChargedAmountSubmit();
+                  }
+                }}
+                placeholder={language === 'ar' ? 'أدخل عدد الجواهر...' : 'Enter diamonds amount...'}
+                dir="ltr"
+                className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-bold text-gray-900 outline-none transition-all focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 text-left"
+              />
+              <button
+                onClick={() => handleChargedAmountSubmit()}
+                disabled={!inputText.trim()}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#CD1212] text-white transition-all hover:bg-red-700 active:scale-95 disabled:bg-gray-200 disabled:opacity-50 shrink-0"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        );
+      case 'confirm_recharge':
+        return (
+          <div className="flex gap-3 mt-3 w-full max-w-sm">
+            <button onClick={() => handleConfirmRechargeSelect('yes')} className="flex-1 bg-white border border-gray-200 text-gray-800 hover:border-red-500 hover:text-red-600 font-bold py-3 px-4 rounded-xl shadow-sm transition-all text-sm active:scale-95">
+              {language === 'ar' ? 'نعم' : 'Yes'}
+            </button>
+            <button onClick={() => handleConfirmRechargeSelect('no')} className="flex-1 bg-white border border-gray-200 text-gray-800 hover:border-red-500 hover:text-red-600 font-bold py-3 px-4 rounded-xl shadow-sm transition-all text-sm active:scale-95">
+              {language === 'ar' ? 'لا' : 'No'}
+            </button>
+          </div>
         );
       case 'diamonds':
         return (
@@ -410,25 +575,8 @@ export default function Charge() {
           </div>
         );
       case 'ask_id':
-        const currentAccId = loggedInUser?.id_account || loggedInUser?.account_id;
         return (
           <div className="flex flex-col gap-3 mt-3 w-full max-w-sm text-right">
-            {currentAccId && (
-              <button 
-                onClick={() => handleIdSubmit(currentAccId)}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-xl shadow-lg shadow-emerald-600/10 active:scale-95 transition-all text-xs sm:text-sm flex items-center justify-center gap-2"
-              >
-                <Check className="h-4.5 w-4.5" />
-                {language === 'ar' ? `نعم، اشحن لـ (${currentAccId})` : `Yes, recharge for (${currentAccId})`}
-              </button>
-            )}
-            
-            <div className="w-full border-t border-gray-100 my-1"></div>
-            
-            <p className="text-[11px] text-gray-500 font-bold mb-0.5">
-              {language === 'ar' ? 'أو أدخل أيدي آخر للشحن له:' : 'Or enter another ID to recharge:'}
-            </p>
-            
             <div className="flex gap-2">
               <input
                 type="number"

@@ -33,6 +33,13 @@ export default function LoginRegister() {
       return;
     }
     
+    if (!isLogin) {
+      if (!/^[a-zA-Z\s]+$/.test(accountId)) {
+        setError(language === 'ar' ? 'الاسم يجب أن يحتوي على أحرف إنجليزية ومسافات فقط ولا يقبل الأرقام أو الرموز أو الأحرف العربية' : 'Name must contain only English letters and spaces. Numbers, symbols, or Arabic letters are not allowed');
+        return;
+      }
+    }
+
     if (accountId.trim().length < 3) {
       setError(isLogin
         ? (language === 'ar' ? 'الاسم أو معرّف اللاعب يجب أن يكون 3 أحرف على الأقل' : 'Name or Player ID must be at least 3 characters')
@@ -135,13 +142,7 @@ export default function LoginRegister() {
               <input 
                 type="text" 
                 value={accountId}
-                onChange={(e) => {
-                  let val = e.target.value;
-                  if (!isLogin) {
-                    val = val.replace(/[^\w\s\u0600-\u06FF]/gi, ''); // Allow letters, numbers, spaces, and Arabic
-                  }
-                  setAccountId(val);
-                }}
+                onChange={(e) => setAccountId(e.target.value)}
                 className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
                 placeholder={isLogin 
                   ? (language === 'ar' ? "يرجى إدخال الاسم أو معرف اللاعب (ID)" : "Please enter your name or Player ID")

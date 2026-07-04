@@ -133,13 +133,13 @@ export default function Account() {
   const headerStyles = getHeaderStyles();
 
   return (
-    <div className="min-h-screen w-full relative bg-[#F8F9FA] p-4 md:p-6 font-sans pb-24" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="relative z-10 mx-auto max-w-md pt-2">
+    <div className="min-h-screen w-full relative bg-white md:bg-[#F8F9FA] font-sans pb-24" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="relative z-10 mx-auto max-w-md h-full min-h-screen md:min-h-fit md:p-6 md:pt-8">
 
         {!showForm ? (
-          <div className="rounded-[32px] border border-gray-100 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.05)] overflow-hidden mb-4 relative pb-8" id="profile_card">
+          <div className="md:rounded-[32px] md:border border-gray-100 bg-white md:shadow-[0_15px_50px_rgba(0,0,0,0.05)] overflow-hidden mb-0 md:mb-4 relative pb-12 min-h-screen md:min-h-[500px] flex flex-col" id="profile_card">
             {/* Top green gradient header */}
-            <div className={`absolute top-0 left-0 right-0 h-[175px] bg-gradient-to-r ${headerStyles.bg} overflow-hidden`} id="green_header">
+            <div className={`absolute top-0 left-0 right-0 h-[220px] bg-gradient-to-r ${headerStyles.bg} overflow-hidden`} id="green_header">
               {/* Light wave lines SVG or pattern overlay */}
               <div className="absolute inset-0 opacity-15 pointer-events-none">
                 <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -166,7 +166,7 @@ export default function Account() {
             </div>
 
             {/* Profile Avatar & Username & Badges */}
-            <div className="relative z-10 flex flex-col items-center pt-[105px] px-6">
+            <div className="relative z-10 flex flex-col items-center pt-[150px] px-6">
               {/* Red Avatar Container with thick white border and shadow */}
               <div className="relative mb-4 flex h-[100px] w-[100px] items-center justify-center rounded-full border-4 border-white bg-[#CD1212] shadow-[0_8px_24px_rgba(205,18,18,0.25)]">
                 <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-tr from-[#A60F0F] to-[#CD1212]">
@@ -195,7 +195,7 @@ export default function Account() {
 
               {/* Username displaying account_name (Name) or id_account (ID) depending on verification */}
               <h2 className="text-2xl font-black text-[#0B1E33] tracking-tight mb-2">
-                {user?.verification_status === 'Approved' ? (user?.id_account || user?.account_id) : (user?.account_name || user?.account_id)}
+                {user?.account_name || user?.id_account || user?.account_id}
               </h2>
 
               {/* Small dot divider - only show if Approved, displaying the ID */}
@@ -334,7 +334,7 @@ export default function Account() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm mb-4">
+          <div className="md:rounded-2xl md:border border-gray-100 bg-white p-6 md:shadow-sm mb-0 md:mb-4 min-h-[calc(100vh-100px)] md:min-h-fit">
             <h3 className="text-lg font-black text-gray-900 mb-1">
               {language === 'ar' ? 'تقديم معلومات التحقق' : 'Submit Verification Info'}
             </h3>

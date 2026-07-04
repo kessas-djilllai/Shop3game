@@ -935,41 +935,9 @@ export default function Admin() {
               <User className="h-5 w-5 text-[#CD1212]" />
               إدارة المستخدمين
             </h2>
-            
-            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {[
-                { key: 'pending', label: 'قيد التأكيد' },
-                { key: 'approved', label: 'الحسابات المفعلة' },
-                { key: 'banned', label: 'الحسابات المحظورة' },
-                { key: 'all', label: 'الكل' }
-              ].map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setUserFilter(f.key as any)}
-                  className={`whitespace-nowrap px-5 py-2.5 text-xs font-black rounded-full transition-all border ${
-                    userFilter === f.key 
-                      ? 'bg-[#CD1212] text-white border-[#CD1212] shadow-md shadow-red-600/10' 
-                      : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-100 shadow-sm'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
 
             {(() => {
-              const filteredUsers = (data.users || []).filter((u: any) => {
-                if (userFilter === 'pending') {
-                  return u.verification_status === 'UnderVerification' && !u.is_banned;
-                }
-                if (userFilter === 'approved') {
-                  return u.verification_status === 'Approved' && !u.is_banned;
-                }
-                if (userFilter === 'banned') {
-                  return !!u.is_banned;
-                }
-                return true; // 'all'
-              });
+              const filteredUsers = data.users || [];
 
               if (filteredUsers.length === 0) {
                 return (
@@ -1075,31 +1043,15 @@ export default function Admin() {
           <div className="space-y-4">
             <div className="flex flex-col gap-2 text-xs max-h-[50vh] overflow-y-auto pr-1">
               <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
-                <p className="text-gray-400 font-black text-[10px] mb-1">المنصة:</p> 
-                <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.platform}</p>
-              </div>
-              <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
-                <p className="text-gray-400 font-black text-[10px] mb-1">الايميل (البريد الإلكتروني):</p> 
-                <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.email}</p>
-              </div>
-              {selectedOrder.original_email && (
-                <div className="rounded-2xl border border-blue-100 bg-blue-50/20 p-3">
-                  <p className="text-blue-600 font-black text-[10px] mb-1 flex items-center justify-between">البريد الاصلي:
-                    <span className="text-[9px] bg-blue-100/80 px-2 py-0.5 rounded-full text-blue-700 font-black">مستخرج من رسائل جوجل</span>
-                  </p> 
-                  <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.original_email}</p>
-                </div>
-              )}
-              <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
-                <p className="text-gray-400 font-black text-[10px] mb-1">كلمة السر:</p> 
-                <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.platform_password}</p>
+                <p className="text-gray-400 font-black text-[10px] mb-1">اسم الحساب:</p> 
+                <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.account_name || selectedOrder.user_acc_id}</p>
               </div>
               <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
                 <p className="text-gray-400 font-black text-[10px] mb-1">الايدي:</p> 
                 <p className="font-black text-gray-900 break-all text-sm">{selectedOrder.user_acc_id}</p>
               </div>
               <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">
-                <p className="text-gray-400 font-black text-[10px] mb-1">الجواهر المطلوبة:</p> 
+                <p className="text-gray-400 font-black text-[10px] mb-1">الكمية:</p> 
                 <p className="font-black text-[#CD1212] text-sm truncate">{selectedOrder.diamonds}</p>
               </div>
               <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3">

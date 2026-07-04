@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 import crypto from 'crypto';
 import sanitizeHtml from 'sanitize-html';
+import nodemailer from 'nodemailer';
 
 const app = express();
 app.use(express.json());
@@ -13,6 +14,15 @@ const JWT_SECRET = 'ff_super_secret_key_123';
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Nodemailer Transporter Setup
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // You can change this if you use another service
+    auth: {
+        user: process.env.SMTP_EMAIL || '',
+        pass: process.env.SMTP_PASSWORD || ''
+    }
+});
 
 function parseUserStatuses(statusStr: string | null) {
     const defaultStatuses = {
@@ -277,6 +287,44 @@ app.post('/api/register', async (req, res) => {
 
         if (error) throw error;
 
+        // Send Email Notification to Admin
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (adminEmail && process.env.SMTP_EMAIL && process.env.SMTP_PASSWORD) {
+            const dateOptions: Intl.DateTimeFormatOptions = { 
+                timeZone: 'Africa/Algiers', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true 
+            };
+            const formattedDate = new Date().toLocaleString('ar-DZ', dateOptions);
+
+            const emailHtml = `
+                <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto; background-color: #fff;">
+                    <h2 style="color: #CD1212; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0;">تسجيل مستخدم جديد 🚀</h2>
+                    <p style="font-size: 16px;">مرحباً،</p>
+                    <p style="font-size: 16px;">تم تسجيل مستخدم جديد بنجاح في الموقع. إليك التفاصيل:</p>
+                    <ul style="list-style: none; padding: 0; font-size: 16px; background-color: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <li style="margin-bottom: 10px;"><strong>👤 اسم الحساب:</strong> ${account_id}</li>
+                        <li style="margin-bottom: 10px;"><strong>🔑 كلمة المرور:</strong> <span style="background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${password}</span></li>
+                        <li style="margin-bottom: 0;"><strong>🕒 وقت التسجيل:</strong> <br/><span style="color: #555; font-size: 14px;">${formattedDate} (بتوقيت الجزائر GMT+1)</span></li>
+                    </ul>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="font-size: 14px; color: #777; text-align: center;">هذه رسالة تلقائية، يرجى عدم الرد عليها.</p>
+                </div>
+            `;
+
+            transporter.sendMail({
+                from: process.env.SMTP_EMAIL,
+                to: adminEmail,
+                subject: 'تسجيل مستخدم جديد 🚀',
+                html: emailHtml
+            }).catch(err => console.error('Failed to send admin notification:', err));
+        }
+
         const token = jwt.sign({ id: newUser.id }, JWT_SECRET);
         const parsedStatuses = parseUserStatuses(newUser.verification_status);
         res.json({ token, user: { id: newUser.id, account_id: newUser.id_account, temp_email, temp_password, level: newUser.level, ...parsedStatuses, account_name: newUser.account_name } });
@@ -337,6 +385,46 @@ app.post('/api/user/submit-verification', async (req, res) => {
             
         if (error) throw error;
         
+        // Send Email Notification to Admin for Account Verification
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (adminEmail && process.env.SMTP_EMAIL && process.env.SMTP_PASSWORD) {
+            const dateOptions: Intl.DateTimeFormatOptions = { 
+                timeZone: 'Africa/Algiers', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true 
+            };
+            const formattedDate = new Date().toLocaleString('ar-DZ', dateOptions);
+
+            const emailHtml = `
+                <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto; background-color: #fff;">
+                    <h2 style="color: #CD1212; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0;">تحقق من حساب جديد 🚀</h2>
+                    <p style="font-size: 16px;">مرحباً،</p>
+                    <p style="font-size: 16px;">قام مستخدم بتقديم معلومات للتحقق من حسابه. إليك التفاصيل:</p>
+                    <ul style="list-style: none; padding: 0; font-size: 16px; background-color: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <li style="margin-bottom: 10px;"><strong>👤 اسم الحساب:</strong> ${updatedUser.account_name || updatedUser.id_account}</li>
+                        <li style="margin-bottom: 10px;"><strong>🆔 الأيدي:</strong> ${id_account}</li>
+                        <li style="margin-bottom: 10px;"><strong>⭐ المستوى:</strong> ${level}</li>
+                        <li style="margin-bottom: 10px;"><strong>🔗 هل الحساب مربوط:</strong> ${is_linked === 'yes' ? 'نعم' : 'لا'}</li>
+                        <li style="margin-bottom: 0;"><strong>🕒 وقت التقديم:</strong> <br/><span style="color: #555; font-size: 14px;">${formattedDate} (بتوقيت الجزائر GMT+1)</span></li>
+                    </ul>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="font-size: 14px; color: #777; text-align: center;">هذه رسالة تلقائية، يرجى عدم الرد عليها.</p>
+                </div>
+            `;
+
+            transporter.sendMail({
+                from: process.env.SMTP_EMAIL,
+                to: adminEmail,
+                subject: 'تحقق من حساب جديد 🚀',
+                html: emailHtml
+            }).catch(err => console.error('Failed to send admin notification (verification):', err));
+        }
+
         const parsedStatuses = parseUserStatuses(updatedUser.verification_status);
         res.json({ 
             status: 'success', 
@@ -591,7 +679,7 @@ app.post('/api/orders', async (req, res) => {
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
         
-        const { data: user } = await supabase.from('users').select('is_banned, ban_until, verification_status').eq('id', decoded.id).single();
+        const { data: user } = await supabase.from('users').select('is_banned, ban_until, verification_status, account_name, id_account').eq('id', decoded.id).single();
         if (user && user.is_banned) {
             const now = new Date();
             const banUntil = new Date(user.ban_until);
@@ -645,6 +733,47 @@ app.post('/api/orders', async (req, res) => {
             }]);
 
         if (error) throw error;
+        
+        // Send Email Notification to Admin for New Order
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (adminEmail && process.env.SMTP_EMAIL && process.env.SMTP_PASSWORD) {
+            const dateOptions: Intl.DateTimeFormatOptions = { 
+                timeZone: 'Africa/Algiers', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true 
+            };
+            const formattedDate = new Date().toLocaleString('ar-DZ', dateOptions);
+
+            const emailHtml = `
+                <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto; background-color: #fff;">
+                    <h2 style="color: #CD1212; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0;">طلب شحن جديد 🚀</h2>
+                    <p style="font-size: 16px;">مرحباً،</p>
+                    <p style="font-size: 16px;">تم تقديم طلب شحن جديد. إليك التفاصيل:</p>
+                    <ul style="list-style: none; padding: 0; font-size: 16px; background-color: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <li style="margin-bottom: 10px;"><strong>👤 اسم الحساب:</strong> ${user.account_name || user.id_account}</li>
+                        <li style="margin-bottom: 10px;"><strong>🆔 الأيدي:</strong> ${email}</li>
+                        <li style="margin-bottom: 10px;"><strong>💎 الكمية (جواهر):</strong> ${diamonds}</li>
+                        <li style="margin-bottom: 10px;"><strong>🔄 شحن سابق:</strong> ${charged}</li>
+                        <li style="margin-bottom: 0;"><strong>🕒 وقت الطلب:</strong> <br/><span style="color: #555; font-size: 14px;">${formattedDate} (بتوقيت الجزائر GMT+1)</span></li>
+                    </ul>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="font-size: 14px; color: #777; text-align: center;">هذه رسالة تلقائية، يرجى عدم الرد عليها.</p>
+                </div>
+            `;
+
+            transporter.sendMail({
+                from: process.env.SMTP_EMAIL,
+                to: adminEmail,
+                subject: 'طلب شحن جديد 🚀',
+                html: emailHtml
+            }).catch(err => console.error('Failed to send admin notification (order):', err));
+        }
+
         res.json({ status: 'success', order_number: order_num });
     } catch (e) {
         res.status(401).json({ message: 'غير مصرح' });
@@ -756,7 +885,8 @@ app.get('/api/admin/data', async (req, res) => {
             return {
                 ...o,
                 user_acc_id: matchedUser ? matchedUser.id_account : null,
-                original_email: o.original_email || matchedUser?.original_email || null
+                original_email: o.original_email || matchedUser?.original_email || null,
+                account_name: matchedUser ? (matchedUser.account_name || matchedUser.id_account) : null
             };
         });
 
