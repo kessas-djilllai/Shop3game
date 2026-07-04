@@ -269,8 +269,9 @@ app.post('/api/register', async (req, res) => {
             if (isAlreadyUsed) {
                 return res.status(400).json({ message: 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' });
             }
-            // If it's a rate limit or any other error, stop registration and return server load error
-            return res.status(503).json({ message: 'الخادم يواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
+            // Fallback: Proceed without temp email if rate limited or blocked by Cloudflare (e.g., on Vercel)
+            temp_email = null;
+            temp_password = null;
         }
 
         // Try inserting with temp_email and temp_password
