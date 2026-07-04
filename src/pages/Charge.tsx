@@ -190,7 +190,7 @@ export default function Charge() {
 
     setFormData(prev => ({ ...prev, diamonds: d }));
     
-    const accId = loggedInUser?.account_id || "1564949466";
+    const accId = loggedInUser?.id_account || loggedInUser?.account_id || "1564949466";
     setFormData(prev => ({ ...prev, account_id: accId }));
     
     submitOrder(accId, d);
@@ -410,7 +410,7 @@ export default function Charge() {
           </div>
         );
       case 'ask_id':
-        const currentAccId = loggedInUser?.account_id;
+        const currentAccId = loggedInUser?.id_account || loggedInUser?.account_id;
         return (
           <div className="flex flex-col gap-3 mt-3 w-full max-w-sm text-right">
             {currentAccId && (

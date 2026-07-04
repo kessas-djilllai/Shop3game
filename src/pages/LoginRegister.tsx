@@ -135,7 +135,13 @@ export default function LoginRegister() {
               <input 
                 type="text" 
                 value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
+                onChange={(e) => {
+                  let val = e.target.value;
+                  if (!isLogin) {
+                    val = val.replace(/[^\w\s\u0600-\u06FF]/gi, ''); // Allow letters, numbers, spaces, and Arabic
+                  }
+                  setAccountId(val);
+                }}
                 className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
                 placeholder={isLogin 
                   ? (language === 'ar' ? "يرجى إدخال الاسم أو معرف اللاعب (ID)" : "Please enter your name or Player ID")

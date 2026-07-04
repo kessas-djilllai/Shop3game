@@ -3,6 +3,7 @@ import axios from 'axios';
 import { ArrowLeft, Copy, Mail, Globe, RefreshCcw, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import DOMPurify from 'dompurify';
 
 export default function TempEmail() {
   const { language } = useLanguage();
@@ -96,7 +97,7 @@ export default function TempEmail() {
         fetchMessages(tokenRes.data.token);
         alert(language === 'ar' ? 'تم إنشاء وتفعيل بريدك الجديد بنجاح!' : 'Your new email has been generated and activated successfully!');
       } catch (authErr: any) {
-        console.error("Failed to login to new temp email", authErr);
+        console.log("Failed to login to new temp email", authErr);
         alert(language === 'ar' ? 'تم حفظ البريد في خوادمنا ولكن فشل تسجيل الدخول لـ mail.tm' : 'Saved email on our servers but failed to log in to mail.tm.');
       }
     } catch (err: any) {
@@ -145,7 +146,7 @@ export default function TempEmail() {
           fetchMessages(tokenRes.data.token);
           alert(language === 'ar' ? 'تم إنشاء وتفعيل بريدك الجديد بنجاح!' : 'Your new email has been generated and activated successfully!');
         } catch (authErr: any) {
-          console.error("Failed to login to new temp email", authErr);
+          console.log("Failed to login to new temp email", authErr);
           alert(language === 'ar' ? 'تم حفظ البريد في خوادمنا ولكن فشل تسجيل الدخول لـ mail.tm' : 'Saved email on our servers but failed to log in to mail.tm.');
         }
       } catch (err: any) {
@@ -182,7 +183,7 @@ export default function TempEmail() {
            user.temp_password = res.data.temp_password;
            localStorage.setItem('ff_user', JSON.stringify(user));
          } catch (e) {
-           console.error("Failed to generate temp email", e);
+           console.log("Failed to generate temp email", e);
          }
       }
 
@@ -198,7 +199,7 @@ export default function TempEmail() {
           setToken(tokenRes.data.token);
           fetchMessages(tokenRes.data.token);
         } catch (authErr: any) {
-          console.error("Failed to login to temp email", authErr);
+          console.log("Failed to login to temp email", authErr);
           if (authErr?.response?.status === 401) {
             console.log("Unauthorized 401 detected, automatically regenerating temp email...");
             try {
@@ -222,12 +223,12 @@ export default function TempEmail() {
               setToken(retryTokenRes.data.token);
               fetchMessages(retryTokenRes.data.token);
             } catch (recreateErr) {
-              console.error("Failed to automatically regenerate temp email", recreateErr);
+              console.log("Failed to automatically regenerate temp email", recreateErr);
             }
           }
         }
       } else {
-        console.error("No temp email found for this user in DB.");
+        console.log("No temp email found for this user in DB.");
         if (language === 'ar') {
           alert('يرجى تسجيل الدخول مجددا او إنشاء حساب جديد للحصول على البريد الخاص بك.');
         } else {
@@ -541,7 +542,7 @@ export default function TempEmail() {
                         {messageContent ? (
                           <div 
                             className="prose prose-sm max-w-none prose-img:max-w-full prose-img:rounded-xl"
-                            dangerouslySetInnerHTML={{ __html: messageContent.html ? messageContent.html[0] : (messageContent.text ? `<p class="whitespace-pre-wrap">${messageContent.text}</p>` : '') }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(messageContent.html ? messageContent.html[0] : (messageContent.text ? `<p class="whitespace-pre-wrap">${messageContent.text}</p>` : '')) }}
                           />
                         ) : (
                           <div className="flex justify-center py-10">

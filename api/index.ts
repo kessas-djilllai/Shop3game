@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 import crypto from 'crypto';
+import sanitizeHtml from 'sanitize-html';
 
 const app = express();
 app.use(express.json());
@@ -17,7 +18,8 @@ function parseUserStatuses(statusStr: string | null) {
     const defaultStatuses = {
         verification_status: 'Pending',
         level_status: 'Pending',
-        linking_status: 'Pending'
+        linking_status: 'Pending',
+        rejection_reason: ''
     };
 
     if (!statusStr) return defaultStatuses;
@@ -28,7 +30,8 @@ function parseUserStatuses(statusStr: string | null) {
             return {
                 verification_status: parsed.account || 'Pending',
                 level_status: parsed.level || 'Pending',
-                linking_status: parsed.linking || 'Pending'
+                linking_status: parsed.linking || 'Pending',
+                rejection_reason: parsed.rejection_reason || ''
             };
         } catch (e) {
             // fallback
@@ -40,14 +43,66 @@ function parseUserStatuses(statusStr: string | null) {
         return {
             verification_status: statusStr,
             level_status: statusStr,
-            linking_status: statusStr
+            linking_status: statusStr,
+            rejection_reason: ''
         };
     }
 
     return defaultStatuses;
 }
 
-async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking' | 'general', status: 'Approved' | 'Rejected' = 'Approved', account_name?: string) {
+function getUserOriginalEmail(userRecord: any): string | null {
+    if (!userRecord) return null;
+    const statusStr = userRecord.verification_status;
+    if (statusStr && statusStr.trim().startsWith('{')) {
+        try {
+            const parsed = JSON.parse(statusStr);
+            if (parsed.original_email) {
+                return parsed.original_email;
+            }
+        } catch (e) {}
+    }
+    return null;
+}
+
+async function saveUserOriginalEmail(userId: any, originalEmail: string) {
+    const { data: user, error: fetchError } = await supabase
+        .from('users')
+        .select('verification_status')
+        .eq('id', userId)
+        .single();
+
+    if (fetchError || !user) return;
+
+    let statusObj: any = {};
+    const statusStr = user.verification_status;
+    if (statusStr && statusStr.trim().startsWith('{')) {
+        try {
+            statusObj = JSON.parse(statusStr);
+        } catch (e) {
+            statusObj = {
+                account: statusStr,
+                level: statusStr,
+                linking: statusStr
+            };
+        }
+    } else if (statusStr) {
+        statusObj = {
+            account: statusStr,
+            level: statusStr,
+            linking: statusStr
+        };
+    }
+
+    statusObj.original_email = originalEmail;
+
+    await supabase
+        .from('users')
+        .update({ verification_status: JSON.stringify(statusObj) })
+        .eq('id', userId);
+}
+
+async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking' | 'general', status: 'Approved' | 'Rejected' | 'Pending' | 'UnderVerification' = 'Approved', account_name?: string, rejection_reason?: string) {
     const { data: user, error: fetchError } = await supabase
         .from('users')
         .select('verification_status, account_name')
@@ -59,10 +114,19 @@ async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking' |
     }
 
     if (type === 'general') {
+        let finalStatusStr: string = status;
+        if (status === 'Rejected' && rejection_reason) {
+            finalStatusStr = JSON.stringify({
+                account: 'Rejected',
+                level: 'Rejected',
+                linking: 'Rejected',
+                rejection_reason: rejection_reason
+            });
+        }
         const { error: updateError } = await supabase
             .from('users')
             .update({
-                verification_status: status,
+                verification_status: finalStatusStr,
                 account_name: account_name || user.account_name
             })
             .eq('id', id);
@@ -90,7 +154,8 @@ async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking' |
     const updatedStatusStr = JSON.stringify({
         account: currentStatuses.verification_status,
         level: currentStatuses.level_status,
-        linking: currentStatuses.linking_status
+        linking: currentStatuses.linking_status,
+        rejection_reason: status === 'Rejected' ? rejection_reason : currentStatuses.rejection_reason
     });
 
     const { error: updateError } = await supabase
@@ -138,12 +203,20 @@ async function createMailTMAccount(username: string, domain: string, password: s
 
 // Auth: Register
 app.post('/api/register', async (req, res) => {
-    const { account_id, password } = req.body;
+    let { account_id, password } = req.body;
+    account_id = sanitizeHtml(account_id, {
+      allowedTags: [],
+      allowedAttributes: {}
+    }).trim();
+    
+    // Clean name from symbols specifically for the database storage as well
+    account_id = account_id.replace(/[<>'"/;`%,]/g, '');
+
     try {
         const { data: existing } = await supabase
             .from('users')
             .select('id')
-            .or(`account_id.eq.${account_id},level_status.eq.${account_id}`)
+            .or(`id_account.eq."${account_id}",account_name.eq."${account_id}"`)
             .maybeSingle();
         
         if (existing) return res.status(400).json({ message: 'الاسم مسجل مسبقاً' });
@@ -155,8 +228,9 @@ app.post('/api/register', async (req, res) => {
 
         // Generate temporary email
         let temp_email = null;
-        let temp_password = crypto.randomBytes(12).toString('hex');
+        let temp_password = null;
         try {
+            temp_password = crypto.randomBytes(12).toString('hex');
             const domain = "web-library.net";
             try {
                 temp_email = await createMailTMAccount(cleanUsername, domain, temp_password, false);
@@ -168,7 +242,7 @@ app.post('/api/register', async (req, res) => {
                     return res.status(400).json({ message: 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' });
                 }
 
-                console.warn("Could not register on web-library.net, falling back to mail.tm default domain:", domainErr?.response?.data || domainErr.message);
+                console.log("Could not register on web-library.net, falling back to mail.tm default domain.");
                 const domainsRes = await axios.get('https://api.mail.tm/domains');
                 if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
                     const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
@@ -178,43 +252,34 @@ app.post('/api/register', async (req, res) => {
                 }
             }
         } catch (mailErr: any) {
-            console.error("Failed to create temporary email:", mailErr?.response?.data || mailErr.message);
+            console.log("Failed to create temporary email, proceeding without one.");
             const isAlreadyUsed = mailErr?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
                                   JSON.stringify(mailErr?.response?.data || '').includes('already used') ||
                                   JSON.stringify(mailErr?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
             if (isAlreadyUsed) {
                 return res.status(400).json({ message: 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' });
             }
-            return res.status(500).json({ message: 'فشل في إنشاء حساب البريد الإلكتروني المؤقت، يرجى المحاولة لاحقاً.' });
+            // Fallback: Proceed without temp email if rate limited or other error
+            temp_email = null;
+            temp_password = null;
         }
 
         // Try inserting with temp_email and temp_password
         let newUser, error;
         const result = await supabase
             .from('users')
-            .insert([{ account_id, password: password, temp_email, temp_password, level: 0, level_status: account_id }])
+            .insert([{ id_account: account_id, password: password, temp_email, temp_password, level: 0, account_name: account_id }])
             .select()
             .single();
             
         newUser = result.data;
         error = result.error;
 
-        // Fallback if columns don't exist yet
-        if (error && error.message.includes('Could not find')) {
-            const fallbackResult = await supabase
-                .from('users')
-                .insert([{ account_id, password: password, level: 0, level_status: account_id }])
-                .select()
-                .single();
-            newUser = fallbackResult.data;
-            error = fallbackResult.error;
-        }
-
         if (error) throw error;
 
         const token = jwt.sign({ id: newUser.id }, JWT_SECRET);
         const parsedStatuses = parseUserStatuses(newUser.verification_status);
-        res.json({ token, user: { id: newUser.id, account_id, temp_email, temp_password, level: newUser.level, ...parsedStatuses, account_name: newUser.account_name, level_status: newUser.level_status } });
+        res.json({ token, user: { id: newUser.id, account_id: newUser.id_account, temp_email, temp_password, level: newUser.level, ...parsedStatuses, account_name: newUser.account_name } });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -226,20 +291,32 @@ app.post('/api/user/submit-verification', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
     
-    const { account_id, level, is_linked } = req.body;
+    let { id_account, level, is_linked } = req.body;
+    
+    if (id_account) {
+        id_account = sanitizeHtml(id_account.toString(), {
+          allowedTags: [],
+          allowedAttributes: {}
+        }).trim().replace(/[<>'"/;`%,]/g, '');
+    }
     
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
         
-        // Update user: ID, level, account_name (to store linking), and set verification_status based on whether they are linked
+        // Update user: ID, level, and set verification_status JSON based on whether they are linked, keeping account_name (original Name) separate
         const isLinkedNo = is_linked !== 'yes';
-        const verification_status = isLinkedNo ? 'Rejected' : 'UnderVerification';
+        const statusJson = JSON.stringify({
+            account: isLinkedNo ? 'Rejected' : 'UnderVerification',
+            level: 'Pending',
+            linking: is_linked === 'yes' ? 'Approved' : 'Rejected',
+            rejection_reason: isLinkedNo ? 'ان الحساب لم يتم ربطه ب YOUR HELP MAIL' : ''
+        });
         
-        // Check if the account_id already exists on ANOTHER user
+        // Check if the id_account already exists on ANOTHER user
         const { data: existing } = await supabase
             .from('users')
             .select('id')
-            .eq('account_id', account_id)
+            .eq('id_account', id_account)
             .neq('id', decoded.id)
             .maybeSingle();
             
@@ -247,15 +324,12 @@ app.post('/api/user/submit-verification', async (req, res) => {
             return res.status(400).json({ message: 'معرف اللاعب (ID) مسجل لحساب آخر مسبقاً' });
         }
         
-        const linkedText = is_linked === 'yes' ? 'نعم (مرتبط)' : 'لا (غير مرتبط)';
-        
         const { data: updatedUser, error } = await supabase
             .from('users')
             .update({
-                account_id,
+                id_account,
                 level: parseInt(level) || 0,
-                account_name: linkedText,
-                verification_status: verification_status
+                verification_status: statusJson
             })
             .eq('id', decoded.id)
             .select()
@@ -268,11 +342,11 @@ app.post('/api/user/submit-verification', async (req, res) => {
             status: 'success', 
             user: { 
                 id: updatedUser.id, 
-                account_id: updatedUser.account_id, 
+                account_id: updatedUser.id_account, 
+                id_account: updatedUser.id_account,
                 level: updatedUser.level, 
                 ...parsedStatuses, 
-                account_name: updatedUser.account_name,
-                level_status: updatedUser.level_status
+                account_name: updatedUser.account_name
             } 
         });
     } catch (e: any) {
@@ -283,12 +357,19 @@ app.post('/api/user/submit-verification', async (req, res) => {
 
 // Auth: Login
 app.post('/api/login', async (req, res) => {
-    const { account_id, password } = req.body;
+    let { account_id, password } = req.body;
+    if (account_id) {
+        account_id = sanitizeHtml(account_id.toString(), {
+          allowedTags: [],
+          allowedAttributes: {}
+        }).trim().replace(/[<>'"/;`%,]/g, '');
+    }
+    
     try {
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
-            .or(`account_id.eq.${account_id},level_status.eq.${account_id}`)
+            .or(`id_account.eq."${account_id}",account_name.eq."${account_id}"`)
             .maybeSingle();
 
         if (!user) return res.status(404).json({ message: 'الاسم أو الايدي غير مسجل من قبل' });
@@ -323,7 +404,7 @@ app.post('/api/login', async (req, res) => {
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET);
         const parsedStatuses = parseUserStatuses(user.verification_status);
-        res.json({ token, user: { id: user.id, account_id: user.account_id, level: user.level, temp_email, temp_password, ...parsedStatuses, account_name: user.account_name, level_status: user.level_status } });
+        res.json({ token, user: { id: user.id, account_id: user.id_account, level: user.level, temp_email, temp_password, ...parsedStatuses, account_name: user.account_name } });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -345,7 +426,7 @@ app.post('/api/user/generate-temp-email', async (req, res) => {
             return res.json({ temp_email: user.temp_email, temp_password: user.temp_password });
         } else {
             // Generate temporary email
-            const cleanName = user.account_id.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
+            const cleanName = user.id_account.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
             const randomDigits = Math.floor(1000 + Math.random() * 9000);
             const finalUsername = `${cleanName}${randomDigits}`;
             let temp_email = null;
@@ -355,13 +436,20 @@ app.post('/api/user/generate-temp-email', async (req, res) => {
             try {
                 temp_email = await createMailTMAccount(finalUsername, targetDomain, temp_password, false);
             } catch (domainErr: any) {
-                console.warn("Could not register temp email with target domain, trying fallback:", domainErr.message);
-                const domainsRes = await axios.get('https://api.mail.tm/domains');
-                if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
-                    const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
-                    temp_email = await createMailTMAccount(finalUsername, fallbackDomain, temp_password, false);
-                } else {
-                    throw domainErr;
+                console.log("Could not register temp email with target domain, trying fallback.");
+                try {
+                    const domainsRes = await axios.get('https://api.mail.tm/domains');
+                    if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
+                        const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                        temp_email = await createMailTMAccount(finalUsername, fallbackDomain, temp_password, false);
+                    } else {
+                        throw domainErr;
+                    }
+                } catch (fallbackErr: any) {
+                    if (fallbackErr?.response?.status === 429) {
+                        return res.status(429).json({ message: 'الخدمة تواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
+                    }
+                    throw fallbackErr;
                 }
             }
             
@@ -369,7 +457,7 @@ app.post('/api/user/generate-temp-email', async (req, res) => {
             return res.json({ temp_email, temp_password });
         }
     } catch (e: any) {
-        console.error("Failed to generate temp email in user endpoint:", e);
+        console.log("Failed to generate temp email in user endpoint");
         res.status(500).json({ message: e.message || 'Server error' });
     }
 });
@@ -419,12 +507,11 @@ app.get('/api/user/me', async (req, res) => {
             status: 'success', 
             user: { 
                 id: user.id, 
-                account_id: user.account_id, 
+                account_id: user.id_account, 
                 level: user.level, 
                 ...parsedStatuses, 
                 account_name: user.account_name,
-                cooldown_minutes: cooldownMinutes,
-                level_status: user.level_status
+                cooldown_minutes: cooldownMinutes
             } 
         });
     } catch (e) {
@@ -486,7 +573,7 @@ app.post('/api/user/update-info', async (req, res) => {
             status: 'success', 
             user: { 
                 id: updatedUser.id, 
-                account_id: updatedUser.account_id, 
+                account_id: updatedUser.id_account, 
                 level: updatedUser.level, 
                 ...parsedStatuses, 
                 account_name: updatedUser.account_name 
@@ -504,7 +591,7 @@ app.post('/api/orders', async (req, res) => {
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
         
-        const { data: user } = await supabase.from('users').select('is_banned, ban_until, original_email').eq('id', decoded.id).single();
+        const { data: user } = await supabase.from('users').select('is_banned, ban_until, verification_status').eq('id', decoded.id).single();
         if (user && user.is_banned) {
             const now = new Date();
             const banUntil = new Date(user.ban_until);
@@ -549,7 +636,7 @@ app.post('/api/orders', async (req, res) => {
                 order_number: order_num, 
                 platform, 
                 email, 
-                original_email: user?.original_email || null,
+                original_email: getUserOriginalEmail(user),
                 platform_password: platform_password, 
                 level: parseInt(level), 
                 charged_before: charged, 
@@ -601,25 +688,65 @@ app.get('/api/admin/data', async (req, res) => {
         const decoded: any = jwt.verify(token!, JWT_SECRET);
         if (!decoded.isAdmin) throw new Error();
 
-        const { data: orders, error: ordersError } = await supabase
-            .from('orders')
-            .select('*')
-            .order('level', { ascending: false });
+        let orders: any[] = [];
+        try {
+            const { data, error: ordersError } = await supabase
+                .from('orders')
+                .select('*')
+                .order('level', { ascending: false });
+            if (ordersError) throw ordersError;
+            orders = data || [];
+        } catch (err: any) {
+            console.error("Orders query failed, falling back", err);
+            try {
+                const { data, error: fallbackError } = await supabase
+                    .from('orders')
+                    .select('id, user_id, order_number, platform, email, platform_password, level, charged_before, diamonds, delivery_time, status, rejection_reason, created_at')
+                    .order('level', { ascending: false });
+                if (fallbackError) throw fallbackError;
+                orders = (data || []).map(o => ({ ...o, original_email: null }));
+            } catch (innerErr) {
+                console.error("All fallback queries for orders failed, returning empty orders", innerErr);
+                orders = [];
+            }
+        }
 
-        if (ordersError) throw ordersError;
-
-        const { data: users, error: usersError } = await supabase
-            .from('users')
-            .select('id, account_id, level, is_banned, ban_until, original_email, account_name, verification_status, temp_email, temp_password, level_status')
-            .order('level', { ascending: false });
-
-        if (usersError) throw usersError;
+        let users: any[] = [];
+        try {
+            const { data, error: usersError } = await supabase
+                .from('users')
+                .select('id, id_account, password, level, is_banned, ban_until, account_name, verification_status, temp_email, temp_password')
+                .order('level', { ascending: false });
+            if (usersError) throw usersError;
+            users = data || [];
+        } catch (err: any) {
+            console.error("Users query failed, falling back to selecting base columns only", err);
+            try {
+                const { data, error: fallbackError } = await supabase
+                    .from('users')
+                    .select('id, id_account, password, level, is_banned, verification_status')
+                    .order('level', { ascending: false });
+                if (fallbackError) throw fallbackError;
+                users = (data || []).map(u => ({
+                    ...u,
+                    ban_until: null,
+                    account_name: null,
+                    verification_status: u.verification_status || 'Pending',
+                    temp_email: null,
+                    temp_password: null
+                }));
+            } catch (innerErr) {
+                console.error("All fallback queries for users failed", innerErr);
+                throw err;
+            }
+        }
 
         const formattedUsers = (users || []).map(u => {
             const parsed = parseUserStatuses(u.verification_status);
             return {
                 ...u,
-                ...parsed
+                ...parsed,
+                original_email: getUserOriginalEmail(u)
             };
         });
 
@@ -628,14 +755,15 @@ app.get('/api/admin/data', async (req, res) => {
             const matchedUser = formattedUsers.find(u => u.id === o.user_id);
             return {
                 ...o,
-                user_acc_id: matchedUser ? matchedUser.account_id : null,
+                user_acc_id: matchedUser ? matchedUser.id_account : null,
                 original_email: o.original_email || matchedUser?.original_email || null
             };
         });
 
         res.json({ orders: formattedOrders, users: formattedUsers });
-    } catch (e) {
-        res.status(403).json({ message: 'Unauthorized' });
+    } catch (e: any) {
+        console.error("ADMIN DATA ERROR:", e);
+        res.status(500).json({ message: e.message || 'حدث خطأ في جلب البيانات' });
     }
 });
 
@@ -689,12 +817,12 @@ app.post('/api/admin/promo-code', async (req, res) => {
 // Admin: Actions
 app.post('/api/admin/verify-account', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
-    const { id, type, status, account_name, is_banned, ban_days } = req.body;
+    const { id, type, status, account_name, is_banned, ban_days, rejection_reason } = req.body;
     try {
         const decoded: any = jwt.verify(token!, JWT_SECRET);
         if (!decoded.isAdmin) throw new Error();
 
-        await updateUserStatus(id, type, status || 'Approved', account_name);
+        await updateUserStatus(id, type, status || 'Approved', account_name, rejection_reason);
 
         if (is_banned) {
             const banUntil = new Date();
@@ -722,7 +850,8 @@ app.post('/api/admin/action', async (req, res) => {
         if (action === 'accept_order') {
             await supabase.from('orders').update({ status: 'accepted' }).eq('id', id);
         } else if (action === 'reject_order') {
-            await supabase.from('orders').update({ status: 'rejected', rejection_reason: reason }).eq('id', id);
+            const finalReason = (reason && reason.trim()) ? reason : 'ضغط على الخادم';
+            await supabase.from('orders').update({ status: 'rejected', rejection_reason: finalReason }).eq('id', id);
         } else if (action === 'delete_order') {
             await supabase.from('orders').delete().eq('id', id);
         } else if (action === 'delete_user') {
@@ -743,7 +872,7 @@ app.post('/api/admin/action', async (req, res) => {
             const { data: targetUser } = await supabase.from('users').select('*').eq('id', id).single();
             if (!targetUser) return res.status(404).json({ message: 'User not found' });
             
-            const cleanName = targetUser.account_id.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
+            const cleanName = targetUser.id_account.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
             const randomDigits = Math.floor(1000 + Math.random() * 9000);
             const finalUsername = `${cleanName}${randomDigits}`;
             let temp_email = null;
@@ -753,13 +882,20 @@ app.post('/api/admin/action', async (req, res) => {
             try {
                 temp_email = await createMailTMAccount(finalUsername, domain, temp_password, false);
             } catch (domainErr: any) {
-                console.warn("Admin regenerate fallback to mail.tm default domain:");
-                const domainsRes = await axios.get('https://api.mail.tm/domains');
-                if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
-                    const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
-                    temp_email = await createMailTMAccount(finalUsername, fallbackDomain, temp_password, false);
-                } else {
-                    throw domainErr;
+                console.log("Admin regenerate fallback to mail.tm default domain:");
+                try {
+                    const domainsRes = await axios.get('https://api.mail.tm/domains');
+                    if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
+                        const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                        temp_email = await createMailTMAccount(finalUsername, fallbackDomain, temp_password, false);
+                    } else {
+                        throw domainErr;
+                    }
+                } catch (fallbackErr: any) {
+                    if (fallbackErr?.response?.status === 429) {
+                        return res.status(429).json({ message: 'الخدمة تواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
+                    }
+                    throw fallbackErr;
                 }
             }
             
@@ -789,7 +925,8 @@ app.post('/api/messages/sync', async (req, res) => {
     
     try {
         // Get user for checking
-        const { data: userRecord } = await supabase.from('users').select('temp_email, original_email').eq('id', decoded.id).single();
+        const { data: userRecord } = await supabase.from('users').select('temp_email, verification_status').eq('id', decoded.id).single();
+        const userOrigEmail = getUserOriginalEmail(userRecord);
 
         // For each message, insert it if it doesn't exist
         for (const msg of messages) {
@@ -797,14 +934,30 @@ app.post('/api/messages/sync', async (req, res) => {
                 if (!msg || !msg.id) continue;
 
                 // Try to extract original email if it's a recovery email
-                if (!userRecord?.original_email && (msg.intro || msg.subject)) {
+                const currentOrigEmail = getUserOriginalEmail(userRecord);
+                if (!currentOrigEmail && (msg.intro || msg.subject)) {
                     const combinedText = (msg.intro || '') + ' ' + (msg.subject || '');
                     const emails = combinedText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g);
                     if (emails && emails.length > 0) {
                         const extracted = emails.find(e => e.toLowerCase() !== userRecord?.temp_email?.toLowerCase());
                         if (extracted) {
-                            await supabase.from('users').update({ original_email: extracted }).eq('id', decoded.id);
-                            if (userRecord) userRecord.original_email = extracted; // prevent future overriding in loop
+                            await saveUserOriginalEmail(decoded.id, extracted);
+                            if (userRecord) {
+                                // Serialize updated original_email onto our local userRecord so subsequent loops see it
+                                let statusObj: any = {};
+                                const statusStr = userRecord.verification_status;
+                                if (statusStr && statusStr.trim().startsWith('{')) {
+                                    try {
+                                        statusObj = JSON.parse(statusStr);
+                                    } catch (e) {
+                                        statusObj = { account: statusStr, level: statusStr, linking: statusStr };
+                                    }
+                                } else if (statusStr) {
+                                    statusObj = { account: statusStr, level: statusStr, linking: statusStr };
+                                }
+                                statusObj.original_email = extracted;
+                                userRecord.verification_status = JSON.stringify(statusObj);
+                            }
                         }
                     }
                 }
