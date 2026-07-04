@@ -75,6 +75,54 @@ export default function LoginRegister() {
     try {
       const endpoint = isLogin ? '/api/login' : '/api/register';
       const reqBody: any = { account_id: accountId.trim(), password };
+
+      // Generate email from the browser IP to avoid Vercel rate-limits on register
+      if (!isLogin) {
+        try {
+           const cleanName = accountId.trim().toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
+           const randomDigits = Math.floor(1000 + Math.random() * 9000);
+           const cleanUsername = `${cleanName}${randomDigits}`;
+           const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+           
+           let email = `${cleanUsername}@web-library.net`;
+           let createSuccess = false;
+           
+           try {
+              await axios.post('https://api.mail.tm/accounts', { address: email, password: tempPassword });
+              createSuccess = true;
+           } catch(e: any) {
+              const isAlreadyUsed = JSON.stringify(e?.response?.data || '').includes('already used') || JSON.stringify(e?.response?.data || '').includes('23bd9dbf');
+              if (isAlreadyUsed) {
+                  throw new Error(language === 'ar' ? 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' : 'Email username already used, please choose another name.');
+              }
+              // Try fallback domain
+              const domainsRes = await axios.get('https://api.mail.tm/domains');
+              if (domainsRes.data['hydra:member']?.length > 0) {
+                 const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                 email = `${cleanUsername}@${fallbackDomain}`;
+                 await axios.post('https://api.mail.tm/accounts', { address: email, password: tempPassword });
+                 createSuccess = true;
+              }
+           }
+           
+           if (createSuccess) {
+              reqBody.temp_email = email;
+              reqBody.temp_password = tempPassword;
+           }
+        } catch (mailErr: any) {
+             const errMsg = mailErr?.message || '';
+             const isAlreadyUsed = errMsg.includes('مستخدم بالفعل') || errMsg.includes('already used') || JSON.stringify(mailErr?.response?.data || '').includes('already used');
+             if (isAlreadyUsed) {
+                 setError(language === 'ar' ? 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' : 'Email username already used, please choose another name.');
+                 setLoading(false);
+                 return;
+             }
+             setError(language === 'ar' ? 'الخادم يواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' : 'Server is currently experiencing high load, please try again later.');
+             setLoading(false);
+             return;
+        }
+      }
+      
       const res = await axios.post(endpoint, reqBody);
       
       localStorage.setItem('ff_token', res.data.token);

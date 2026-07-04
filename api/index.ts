@@ -231,47 +231,49 @@ app.post('/api/register', async (req, res) => {
         
         if (existing) return res.status(400).json({ message: 'الاسم مسجل مسبقاً' });
 
-        // Generate automatic random username for temp email so they still have an inbox
-        const cleanName = account_id.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
-        const randomDigits = Math.floor(1000 + Math.random() * 9000);
-        const cleanUsername = `${cleanName}${randomDigits}`;
+        // Use temp_email from request if provided (client-side generation bypasses Vercel limits), otherwise generate on server
+        let temp_email = req.body.temp_email || null;
+        let temp_password = req.body.temp_password || null;
 
-        // Generate temporary email
-        let temp_email = null;
-        let temp_password = null;
-        try {
-            temp_password = crypto.randomBytes(12).toString('hex');
-            const domain = "web-library.net";
+        if (!temp_email) {
+            // Generate automatic random username for temp email so they still have an inbox
+            const cleanName = account_id.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
+            const randomDigits = Math.floor(1000 + Math.random() * 9000);
+            const cleanUsername = `${cleanName}${randomDigits}`;
+
             try {
-                temp_email = await createMailTMAccount(cleanUsername, domain, temp_password, false);
-            } catch (domainErr: any) {
-                const isAlreadyUsed = domainErr?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
-                                      JSON.stringify(domainErr?.response?.data || '').includes('already used') ||
-                                      JSON.stringify(domainErr?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
+                temp_password = crypto.randomBytes(12).toString('hex');
+                const domain = "web-library.net";
+                try {
+                    temp_email = await createMailTMAccount(cleanUsername, domain, temp_password, false);
+                } catch (domainErr: any) {
+                    const isAlreadyUsed = domainErr?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
+                                          JSON.stringify(domainErr?.response?.data || '').includes('already used') ||
+                                          JSON.stringify(domainErr?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
+                    if (isAlreadyUsed) {
+                        return res.status(400).json({ message: 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' });
+                    }
+
+                    console.log("Could not register on web-library.net, falling back to mail.tm default domain.");
+                    const domainsRes = await axios.get('https://api.mail.tm/domains');
+                    if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
+                        const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                        temp_email = await createMailTMAccount(cleanUsername, fallbackDomain, temp_password, false);
+                    } else {
+                        throw domainErr;
+                    }
+                }
+            } catch (mailErr: any) {
+                console.log("Failed to create temporary email, returning error.");
+                const isAlreadyUsed = mailErr?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
+                                      JSON.stringify(mailErr?.response?.data || '').includes('already used') ||
+                                      JSON.stringify(mailErr?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
                 if (isAlreadyUsed) {
                     return res.status(400).json({ message: 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' });
                 }
-
-                console.log("Could not register on web-library.net, falling back to mail.tm default domain.");
-                const domainsRes = await axios.get('https://api.mail.tm/domains');
-                if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
-                    const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
-                    temp_email = await createMailTMAccount(cleanUsername, fallbackDomain, temp_password, false);
-                } else {
-                    throw domainErr;
-                }
+                // Stop registration and return server load error if email creation fails
+                return res.status(503).json({ message: 'الخادم يواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
             }
-        } catch (mailErr: any) {
-            console.log("Failed to create temporary email, returning error.");
-            const isAlreadyUsed = mailErr?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
-                                  JSON.stringify(mailErr?.response?.data || '').includes('already used') ||
-                                  JSON.stringify(mailErr?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
-            if (isAlreadyUsed) {
-                return res.status(400).json({ message: 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' });
-            }
-            // Fallback: Proceed without temp email if rate limited or blocked by Cloudflare (e.g., on Vercel)
-            temp_email = null;
-            temp_password = null;
         }
 
         // Try inserting with temp_email and temp_password
