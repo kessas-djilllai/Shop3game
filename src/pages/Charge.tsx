@@ -64,11 +64,6 @@ export default function Charge() {
       }
     };
     checkStatus();
-    
-    const termsAccepted = localStorage.getItem('ff_terms_accepted');
-    if (!termsAccepted) {
-      setTermsModal(true);
-    }
   }, []);
   
   const acceptTerms = () => {
@@ -706,30 +701,6 @@ export default function Charge() {
           <div ref={messagesEndRef} />
         </div>
       </main>
-
-      <Modal 
-        isOpen={termsModal} 
-        onClose={acceptTerms}
-        title={language === 'ar' ? 'تنبيه الأمان والخصوصية' : 'Security Notice'}
-      >
-        <div className={`p-2 space-y-4 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
-          <div className="flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
-            <ShieldCheck className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm font-bold text-red-900 leading-relaxed">
-              {language === 'ar' 
-                ? 'يتم استخدام معلوماتك حصرياً لإتمام عملية الشحن، ويتم تشفيرها بأمان تام.' 
-                : 'Your info is used exclusively for the recharge process and is securely encrypted.'}
-            </p>
-          </div>
-          <button 
-            onClick={acceptTerms}
-            className="w-full mt-2 rounded-xl bg-[#CD1212] text-white py-3 font-bold shadow-lg shadow-red-600/20 hover:bg-red-700 active:scale-95 transition-all text-sm"
-          >
-            {language === 'ar' ? 'موافق ومتابعة' : 'Accept & Continue'}
-          </button>
-        </div>
-      </Modal>
-
     </div>
   );
 }

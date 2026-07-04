@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Search, Trash2, ShieldAlert, ShieldCheck, CheckCircle, XCircle, Clock, Menu, X, Filter, LogOut, ArrowRight, User, ClipboardList, Sparkles, Copy, Mail, Globe, RefreshCcw, ArrowLeft, BarChart3 } from 'lucide-react';
+import { Search, Trash2, ShieldAlert, ShieldCheck, CheckCircle, Check, XCircle, Clock, Menu, X, Filter, LogOut, ArrowRight, User, ClipboardList, Sparkles, Copy, Mail, Globe, RefreshCcw, ArrowLeft, BarChart3 } from 'lucide-react';
 import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
 import DOMPurify from 'dompurify';
@@ -44,6 +44,7 @@ export default function Admin() {
   const [mailMessageContent, setMailMessageContent] = useState<any>(null);
   const [mailLoading, setMailLoading] = useState(false);
   const [mailRefreshing, setMailRefreshing] = useState(false);
+  const [isMailCopied, setIsMailCopied] = useState(false);
 
   // Long press tracking
   const longPressTriggered = useRef(false);
@@ -411,12 +412,13 @@ export default function Admin() {
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(mailViewerUser.temp_email);
-                  alert('تم نسخ البريد الإلكتروني!');
+                  setIsMailCopied(true);
+                  setTimeout(() => setIsMailCopied(false), 2000);
                 }}
-                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 px-5 py-3 text-xs font-bold text-gray-700 transition-all active:scale-95 border border-gray-200"
+                className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 rounded-xl px-5 py-3 text-xs font-bold transition-all active:scale-95 border ${isMailCopied ? 'bg-red-50 text-red-600 border-red-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200'}`}
               >
-                <Copy className="h-4 w-4" />
-                <span>نسخ الإيميل</span>
+                {isMailCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                <span>{isMailCopied ? 'تم النسخ!' : 'نسخ الإيميل'}</span>
               </button>
               <button 
                 onClick={() => mailToken && fetchUserMessages(mailToken)}

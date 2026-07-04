@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ArrowLeft, Copy, Mail, Globe, RefreshCcw, X } from 'lucide-react';
+import { ArrowLeft, Copy, Check, Mail, Globe, RefreshCcw, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import DOMPurify from 'dompurify';
@@ -23,6 +23,8 @@ export default function TempEmail() {
     return localStorage.getItem('hide_temp_email_notice_yellow') !== 'true';
   });
 
+  const [isCopied, setIsCopied] = useState(false);
+  
   // Pull to refresh states
   const [pullY, setPullY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -327,7 +329,8 @@ export default function TempEmail() {
   const copyToClipboard = () => {
     if (email) {
       navigator.clipboard.writeText(email);
-      alert(language === 'ar' ? 'تم النسخ!' : 'Copied!');
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
@@ -413,10 +416,10 @@ export default function TempEmail() {
                 <div className="flex gap-2 w-full md:w-auto">
                    <button 
                      onClick={copyToClipboard}
-                     className="w-full md:w-auto flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-6 py-3.5 font-bold text-gray-700 hover:bg-gray-200 transition-colors active:scale-95 duration-150"
+                     className={`w-full md:w-auto flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-bold transition-all active:scale-95 duration-150 ${isCopied ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                    >
-                     <Copy className="h-5 w-5" />
-                     {language === 'ar' ? 'نسخ الإيميل' : 'Copy Email'}
+                     {isCopied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                     {isCopied ? (language === 'ar' ? 'تم النسخ!' : 'Copied!') : (language === 'ar' ? 'نسخ الإيميل' : 'Copy Email')}
                    </button>
                 </div>
               </div>
