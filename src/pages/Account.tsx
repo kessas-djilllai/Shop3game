@@ -98,6 +98,7 @@ export default function Account() {
         localStorage.setItem('ff_user', JSON.stringify(res.data.user));
       }
       setShowForm(false);
+      alert(language === 'ar' ? 'تم إرسال طلب التحقق بنجاح. سيتم مراجعة حسابك في غضون 15 إلى 60 دقيقة.' : 'Verification request submitted successfully. Your account will be reviewed within 15 to 60 minutes.');
     } catch (err: any) {
       setFormError(err.response?.data?.message || (language === 'ar' ? 'فشل في إرسال البيانات' : 'Failed to send details'));
     } finally {
@@ -242,8 +243,8 @@ export default function Account() {
                     </h4>
                     <p className="text-[10px] text-gray-400 font-bold leading-tight">
                       {language === 'ar' 
-                        ? 'لقد تم إرسال معلوماتك بنجاح وهي قيد المراجعة حالياً من قبل النظام. سيتم تفعيل حسابك فور تأكيد المعلومات.' 
-                        : 'Your details are sent and currently under review by the system. Your account will be activated once verified.'}
+                        ? 'لقد تم إرسال معلوماتك بنجاح وهي قيد المراجعة حالياً من قبل النظام. يستغرق التحقق عادة من 15 إلى 60 دقيقة. سيتم تفعيل حسابك فور تأكيد المعلومات.' 
+                        : 'Your details are sent and currently under review by the system. Verification typically takes between 15 to 60 minutes. Your account will be activated once verified.'}
                     </p>
                   </div>
                 </div>

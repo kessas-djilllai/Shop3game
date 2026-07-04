@@ -262,16 +262,15 @@ app.post('/api/register', async (req, res) => {
                 }
             }
         } catch (mailErr: any) {
-            console.log("Failed to create temporary email, proceeding without one.");
+            console.log("Failed to create temporary email, returning error.");
             const isAlreadyUsed = mailErr?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
                                   JSON.stringify(mailErr?.response?.data || '').includes('already used') ||
                                   JSON.stringify(mailErr?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
             if (isAlreadyUsed) {
                 return res.status(400).json({ message: 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' });
             }
-            // Fallback: Proceed without temp email if rate limited or other error
-            temp_email = null;
-            temp_password = null;
+            // If it's a rate limit or any other error, stop registration and return server load error
+            return res.status(503).json({ message: 'الخادم يواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
         }
 
         // Try inserting with temp_email and temp_password
@@ -534,10 +533,7 @@ app.post('/api/user/generate-temp-email', async (req, res) => {
                         throw domainErr;
                     }
                 } catch (fallbackErr: any) {
-                    if (fallbackErr?.response?.status === 429) {
-                        return res.status(429).json({ message: 'الخدمة تواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
-                    }
-                    throw fallbackErr;
+                    return res.status(503).json({ message: 'الخادم يواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
                 }
             }
             
@@ -546,7 +542,7 @@ app.post('/api/user/generate-temp-email', async (req, res) => {
         }
     } catch (e: any) {
         console.log("Failed to generate temp email in user endpoint");
-        res.status(500).json({ message: e.message || 'Server error' });
+        res.status(503).json({ message: 'الخادم يواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
     }
 });
 
@@ -1022,10 +1018,7 @@ app.post('/api/admin/action', async (req, res) => {
                         throw domainErr;
                     }
                 } catch (fallbackErr: any) {
-                    if (fallbackErr?.response?.status === 429) {
-                        return res.status(429).json({ message: 'الخدمة تواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
-                    }
-                    throw fallbackErr;
+                    return res.status(503).json({ message: 'الخادم يواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' });
                 }
             }
             
