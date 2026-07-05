@@ -88,7 +88,7 @@ const AuthGuard = ({ children }: { children: ReactNode }) => {
 
 const AdminGuard = ({ children }: { children: ReactNode }) => {
   const token = localStorage.getItem('ff_admin_token');
-  if (!token) return <Navigate to="/admin" replace />;
+  if (!token) return <Navigate to="/kessas" replace />;
   return <>{children}</>;
 };
 
@@ -117,7 +117,7 @@ export default function App() {
               <AuthGuard><LiveFeed /></AuthGuard>
             } />
             
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/kessas" element={<Admin />} />
           </Routes>
           <BottomNavigation />
         </div>

@@ -10,7 +10,7 @@ export default function BottomNavigation() {
   const adminToken = localStorage.getItem('ff_admin_token');
 
   // Do not render bottom navigation on login page or admin page
-  if (location.pathname === '/' || location.pathname === '/admin') {
+  if (location.pathname === '/' || location.pathname === '/kessas') {
     return null;
   }
 
