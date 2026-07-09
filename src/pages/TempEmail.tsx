@@ -46,7 +46,7 @@ export default function TempEmail() {
     setFetchingDomains(true);
     try {
       const list = ['web-library.net'];
-      const res = await axios.get('https://api.mail.tm/domains');
+      const res = await axios.get('/api/mailtm/domains');
       const apiDomains = (res.data['hydra:member'] || []).map((d: any) => d.domain);
       const uniqueDomains = Array.from(new Set([...list, ...apiDomains]));
       setDomains(uniqueDomains);
@@ -94,7 +94,7 @@ export default function TempEmail() {
       setMessageContent(null);
       
       try {
-        const tokenRes = await axios.post('https://api.mail.tm/token', {
+        const tokenRes = await axios.post('/api/mailtm/token', {
           address: newEmail,
           password: newPassword
         });
@@ -146,7 +146,7 @@ export default function TempEmail() {
         setMessageContent(null);
         
         try {
-          const tokenRes = await axios.post('https://api.mail.tm/token', {
+          const tokenRes = await axios.post('/api/mailtm/token', {
             address: newEmail,
             password: newPassword
           });
@@ -212,7 +212,7 @@ export default function TempEmail() {
         setPassword(userLocal.temp_password);
 
         try {
-          const tokenRes = await axios.post('https://api.mail.tm/token', {
+          const tokenRes = await axios.post('/api/mailtm/token', {
             address: userLocal.temp_email,
             password: userLocal.temp_password
           });
@@ -238,7 +238,7 @@ export default function TempEmail() {
               setEmail(newEmail);
               setPassword(newPassword);
               
-              const retryTokenRes = await axios.post('https://api.mail.tm/token', {
+              const retryTokenRes = await axios.post('/api/mailtm/token', {
                 address: newEmail,
                 password: newPassword
               });
@@ -268,7 +268,7 @@ export default function TempEmail() {
   const fetchMessages = async (tkn: string) => {
     setRefreshing(true);
     try {
-      const res = await axios.get('https://api.mail.tm/messages', {
+      const res = await axios.get('/api/mailtm/messages', {
         headers: { Authorization: `Bearer ${tkn}` }
       });
       const allMsgs = res.data['hydra:member'] || [];
@@ -281,7 +281,7 @@ export default function TempEmail() {
         const msgTime = new Date(msg.createdAt).getTime();
         if (now - msgTime > thirtyHoursMs) {
           // Delete old message
-          axios.delete(`https://api.mail.tm/messages/${msg.id}`, {
+          axios.delete(`/api/mailtm/messages/${msg.id}`, {
             headers: { Authorization: `Bearer ${tkn}` }
           }).catch(() => {});
         } else {
@@ -330,7 +330,7 @@ export default function TempEmail() {
         }
 
         // Also update mail.gw natively for good measure
-        axios.patch(`https://api.mail.tm/messages/${id}`, { seen: true }, {
+        axios.patch(`/api/mailtm/messages/${id}`, { seen: true }, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/merge-patch+json'
@@ -338,7 +338,7 @@ export default function TempEmail() {
         }).catch(() => {});
       }
       
-      const res = await axios.get(`https://api.mail.tm/messages/${id}`, {
+      const res = await axios.get(`/api/mailtm/messages/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessageContent(res.data);

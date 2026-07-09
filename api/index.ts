@@ -1464,4 +1464,35 @@ app.get('/api/search-player', async (req, res) => {
     }
 });
 
+// Proxy mail.tm requests to bypass Cloudflare/CORS browser iframe blocks
+app.all('/api/mailtm/*', async (req, res) => {
+    const subPath = req.originalUrl.replace('/api/mailtm/', '');
+    const targetUrl = `https://api.mail.tm/${subPath}`;
+    
+    const headers: any = {
+        'Content-Type': 'application/json',
+    };
+    if (req.headers.authorization) {
+        headers['Authorization'] = req.headers.authorization;
+    }
+    
+    try {
+        const response = await axios({
+            method: req.method,
+            url: targetUrl,
+            data: req.body,
+            headers: headers,
+            timeout: 15000
+        });
+        res.status(response.status).json(response.data);
+    } catch (err: any) {
+        console.error(`Mail.tm proxy error on ${req.method} /api/mailtm/${subPath}:`, err.message);
+        if (err.response) {
+            res.status(err.response.status).json(err.response.data);
+        } else {
+            res.status(500).json({ message: 'Network error through mail.tm proxy', error: err.message });
+        }
+    }
+});
+
 export default app;

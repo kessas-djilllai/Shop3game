@@ -161,7 +161,7 @@ export default function Admin() {
     setMailToken('');
     
     try {
-      const tokenRes = await axios.post('https://api.mail.tm/token', {
+      const tokenRes = await axios.post('/api/mailtm/token', {
         address: user.temp_email,
         password: user.temp_password
       });
@@ -186,7 +186,7 @@ export default function Admin() {
               const newPassword = regenRes.data.temp_password;
               
               // Try logging in with the newly created credentials!
-              const retryTokenRes = await axios.post('https://api.mail.tm/token', {
+              const retryTokenRes = await axios.post('/api/mailtm/token', {
                 address: newEmail,
                 password: newPassword
               });
@@ -222,7 +222,7 @@ export default function Admin() {
   const fetchUserMessages = async (tkn: string) => {
     setMailRefreshing(true);
     try {
-      const res = await axios.get('https://api.mail.tm/messages', {
+      const res = await axios.get('/api/mailtm/messages', {
         headers: { Authorization: `Bearer ${tkn}` }
       });
       const allMsgs = res.data['hydra:member'] || [];
@@ -238,14 +238,14 @@ export default function Admin() {
     try {
       if (!isSeen) {
         setMailMessages(msgs => msgs.map(m => m.id === id ? { ...m, seen: true } : m));
-        axios.patch(`https://api.mail.tm/messages/${id}`, { seen: true }, {
+        axios.patch(`/api/mailtm/messages/${id}`, { seen: true }, {
           headers: { 
             Authorization: `Bearer ${mailToken}`,
             'Content-Type': 'application/merge-patch+json'
           }
         }).catch(() => {});
       }
-      const res = await axios.get(`https://api.mail.tm/messages/${id}`, {
+      const res = await axios.get(`/api/mailtm/messages/${id}`, {
         headers: { Authorization: `Bearer ${mailToken}` }
       });
       setMailMessageContent(res.data);

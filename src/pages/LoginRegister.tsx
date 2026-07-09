@@ -105,16 +105,16 @@ export default function LoginRegister() {
              let createSuccess = false;
              
              try {
-                await axios.post('https://api.mail.tm/accounts', { address: email, password: tempPassword });
+                await axios.post('/api/mailtm/accounts', { address: email, password: tempPassword });
                 createSuccess = true;
              } catch(e: any) {
                 // fallback
                 try {
-                   const domainsRes = await axios.get('https://api.mail.tm/domains');
+                   const domainsRes = await axios.get('/api/mailtm/domains');
                    if (domainsRes.data['hydra:member']?.length > 0) {
                       const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
                       email = `${cleanUsername}@${fallbackDomain}`;
-                      await axios.post('https://api.mail.tm/accounts', { address: email, password: tempPassword });
+                      await axios.post('/api/mailtm/accounts', { address: email, password: tempPassword });
                       createSuccess = true;
                    }
                 } catch (fallbackErr) {

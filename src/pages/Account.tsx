@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Calendar, Shield, Link, CheckCircle, XCircle, Clock, Check, Award, ShieldCheck, AlertCircle, Trophy, Heart, Globe, Users, Quote } from 'lucide-react';
+import { User, LogOut, Calendar, Shield, Link, CheckCircle, XCircle, Clock, Check, Award, ShieldCheck, AlertCircle, Trophy, Heart, Globe, Users, Quote, Flame, Flag } from 'lucide-react';
 import axios from 'axios';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -162,36 +162,45 @@ export default function Account() {
             <div className="relative z-10 flex flex-col pt-[130px] px-6 w-full max-w-md mx-auto mb-6">
               <div className="grid grid-cols-2 gap-3.5">
                 {/* Main Profile Info (Spans 2 cols) */}
-                <div className="col-span-2 flex items-center p-5 bg-gradient-to-tr from-red-600 via-rose-600 to-amber-500 rounded-[28px] text-white shadow-[0_12px_30px_rgba(239,68,68,0.22)] border border-white/20 relative overflow-hidden group">
+                <div className="col-span-2 flex flex-col justify-between p-5 pb-4 bg-gradient-to-tr from-red-600 via-rose-600 to-amber-500 rounded-[28px] text-white shadow-[0_12px_30px_rgba(239,68,68,0.22)] border border-white/20 relative overflow-hidden group min-h-[128px]" dir="ltr">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
                   
-                  <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 backdrop-blur-md shadow-inner mr-4 ml-2 flex-shrink-0">
-                    <User className="h-8 w-8 text-white" strokeWidth={1.5} />
-                    {user?.verification_status === 'Approved' ? (
-                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#10B981] border-2 border-white shadow-md">
-                        <Check className="h-3 w-3 text-white stroke-[4]" />
-                      </div>
-                    ) : user?.verification_status === 'UnderVerification' ? (
-                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#3B82F6] border-2 border-white shadow-md">
-                        <Clock className="h-3 w-3 text-white stroke-[3]" />
-                      </div>
-                    ) : user?.verification_status === 'Rejected' ? (
-                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#EF4444] border-2 border-white shadow-md">
-                        <span className="text-white font-black text-[10px]">X</span>
-                      </div>
-                    ) : (
-                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#F59E0B] border-2 border-white shadow-md">
-                        <AlertCircle className="h-3 w-3 text-white stroke-[3]" />
-                      </div>
-                    )}
+                  <div className="flex items-center">
+                    <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 backdrop-blur-md shadow-inner mr-4 ml-2 flex-shrink-0">
+                      <User className="h-8 w-8 text-white" strokeWidth={1.5} />
+                      {user?.verification_status === 'Approved' ? (
+                        <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#10B981] border-2 border-white shadow-md">
+                          <Check className="h-3 w-3 text-white stroke-[4]" />
+                        </div>
+                      ) : user?.verification_status === 'UnderVerification' ? (
+                        <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#3B82F6] border-2 border-white shadow-md">
+                          <Clock className="h-3 w-3 text-white stroke-[3]" />
+                        </div>
+                      ) : user?.verification_status === 'Rejected' ? (
+                        <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#EF4444] border-2 border-white shadow-md">
+                          <span className="text-white font-black text-[10px]">X</span>
+                        </div>
+                      ) : (
+                        <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#F59E0B] border-2 border-white shadow-md">
+                          <AlertCircle className="h-3 w-3 text-white stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 z-10 flex flex-col justify-center text-left">
+                      <h2 className="text-xl font-black tracking-tight mb-0.5 line-clamp-1 drop-shadow-sm">
+                        {user?.account_name || user?.id_account || user?.account_id}
+                      </h2>
+                      <p className="text-white/90 text-xs font-bold flex items-center gap-1.5 opacity-90 drop-shadow-sm">
+                        ID: {user?.id_account || user?.account_id}
+                      </p>
+                    </div>
                   </div>
-                  
-                  <div className="flex-1 z-10 flex flex-col justify-center text-left" dir="ltr">
-                    <h2 className="text-xl font-black tracking-tight mb-0.5 line-clamp-1 drop-shadow-sm">
-                      {user?.account_name || user?.id_account || user?.account_id}
-                    </h2>
-                    <p className="text-white/90 text-xs font-bold flex items-center gap-1.5 opacity-90 drop-shadow-sm">
-                      ID: {user?.id_account || user?.account_id}
+
+                  {/* Bottom Right Bio */}
+                  <div className="self-end z-10 mt-2 text-right max-w-[85%]" dir="auto">
+                    <p className="text-[11px] font-semibold text-white/90 italic bg-black/15 px-3 py-1 rounded-full border border-white/10 backdrop-blur-sm line-clamp-1">
+                      {user?.bio ? `"${user.bio}"` : (language === 'ar' ? 'لا يوجد بايو' : 'No Bio')}
                     </p>
                   </div>
                 </div>
@@ -252,7 +261,7 @@ export default function Account() {
                       <div>
                         <h4 className="text-sm font-black text-amber-950 mb-1">{language === 'ar' ? 'التحقق من ربط الحساب' : 'Verify Account Linking'}</h4>
                         <p className="text-xs font-semibold text-amber-800 leading-relaxed">
-                          {language === 'ar' ? 'تحقق من ربط بريد خادمك بحسابك فري فاير لتنشيط المزايا بالكامل.' : 'Check and link your server email with your Free Fire account to unlock all features.'}
+                          {language === 'ar' ? 'تحقق من ربط بريد خادمك بحسابك فري فاير لتنشيط سيرفر الشحن' : 'Check and link your server email with your Free Fire account to unlock all features.'}
                         </p>
                       </div>
                     </div>
@@ -262,7 +271,7 @@ export default function Account() {
                       className="w-full rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 py-3 text-xs font-black text-white hover:opacity-95 transition-opacity shadow-lg shadow-amber-500/25 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
                       disabled={formLoading}
                     >
-                      {formLoading ? (language === 'ar' ? 'جاري التحقق...' : 'Verifying...') : (language === 'ar' ? 'ربط وتحقق الآن' : 'Link & Verify Now')}
+                      {formLoading ? (language === 'ar' ? 'جاري التحقق...' : 'Verifying...') : (language === 'ar' ? 'تحقق الآن' : 'Verify Now')}
                     </button>
                   </div>
                 )}
@@ -320,39 +329,39 @@ export default function Account() {
                   <Globe className="absolute right-[-10px] bottom-[-20px] h-24 w-24 text-sky-500 opacity-[0.06] z-0" />
                 </div>
 
-                {/* Clan (الكلان) */}
-                <div className="flex flex-col justify-between p-5 bg-gradient-to-br from-purple-50/70 to-white rounded-[26px] border border-purple-100/70 shadow-[0_4px_12px_rgba(168,85,247,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
-                  <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-purple-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+                {/* Guild / Association (الرابطة) */}
+                <div className="flex flex-col justify-between p-5 bg-gradient-to-br from-amber-900/[0.04] to-white rounded-[26px] border border-amber-900/10 shadow-[0_4px_12px_rgba(120,53,4,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-amber-900/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
                   <div className="flex items-center gap-2.5 mb-3 relative z-10">
-                    <div className="h-8.5 w-8.5 rounded-xl bg-purple-100 flex items-center justify-center">
-                      <Users className="h-4.5 w-4.5 text-purple-600" />
+                    <div className="h-8.5 w-8.5 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <Flag className="h-4.5 w-4.5 text-amber-800" />
                     </div>
-                    <span className="text-[11px] font-extrabold text-purple-500 uppercase tracking-wider">{language === 'ar' ? 'الكلان' : 'Clan'}</span>
+                    <span className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wider">{language === 'ar' ? 'الرابطة' : 'Guild'}</span>
                   </div>
                   {isFetchingUser ? (
-                    <span className="h-7 w-12 animate-pulse bg-purple-100 rounded-lg block"></span>
+                    <span className="h-7 w-12 animate-pulse bg-amber-100 rounded-lg block"></span>
                   ) : (
                     <div className="flex flex-col relative z-10">
-                      <span className="text-base font-black text-purple-950 line-clamp-1">
-                        {user?.clane || (language === 'ar' ? 'لا يوجد كلان' : 'No Clan')}
+                      <span className="text-base font-black text-amber-950 line-clamp-1">
+                        {user?.clane || (language === 'ar' ? 'لا توجد رابطة' : 'No Guild')}
                       </span>
                       {user?.lvl_clane ? (
-                        <span className="text-[10px] font-extrabold text-purple-500 mt-0.5">
-                          {language === 'ar' ? 'مستوى ' : 'Level '}{user.lvl_clane}
+                        <span className="text-[10px] font-extrabold text-amber-700 mt-0.5">
+                          {language === 'ar' ? 'مستوى الرابطة ' : 'Guild Level '}{user.lvl_clane}
                         </span>
                       ) : null}
                     </div>
                   )}
                 </div>
 
-                {/* Badges (الأوسمة) */}
+                {/* Badges (شارات الفاير باس) */}
                 <div className="flex flex-col justify-between p-5 bg-gradient-to-br from-amber-50/70 to-white rounded-[26px] border border-amber-100/70 shadow-[0_4px_12px_rgba(245,158,11,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
                   <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-amber-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
                   <div className="flex items-center gap-2.5 mb-3 relative z-10">
                     <div className="h-8.5 w-8.5 rounded-xl bg-amber-100 flex items-center justify-center">
-                      <Award className="h-4.5 w-4.5 text-amber-600" />
+                      <Flame className="h-4.5 w-4.5 text-amber-500 animate-pulse" />
                     </div>
-                    <span className="text-[11px] font-extrabold text-amber-500 uppercase tracking-wider">{language === 'ar' ? 'الأوسمة' : 'Badges'}</span>
+                    <span className="text-[11px] font-extrabold text-amber-500 uppercase tracking-wider">{language === 'ar' ? 'شارات الفاير باس' : 'Fire Pass Badges'}</span>
                   </div>
                   {isFetchingUser ? (
                     <span className="h-7 w-12 animate-pulse bg-amber-100 rounded-lg block"></span>
@@ -361,26 +370,7 @@ export default function Account() {
                   )}
                 </div>
 
-                {/* Bio (البايو) */}
-                <div className="col-span-2 flex flex-col p-5 bg-gradient-to-br from-slate-50/70 to-white rounded-[26px] border border-slate-200/70 shadow-[0_4px_12px_rgba(100,116,139,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
-                  <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-slate-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="flex items-center gap-2.5 mb-2 relative z-10">
-                    <div className="h-8.5 w-8.5 rounded-xl bg-slate-100 flex items-center justify-center">
-                      <Quote className="h-4.5 w-4.5 text-slate-600" />
-                    </div>
-                    <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">{language === 'ar' ? 'البايو / التوقيع' : 'Bio / Signature'}</span>
-                  </div>
-                  {isFetchingUser ? (
-                    <div className="space-y-1.5 mt-1">
-                      <span className="h-4 w-full animate-pulse bg-slate-100 rounded-md block"></span>
-                      <span className="h-4 w-2/3 animate-pulse bg-slate-100 rounded-md block"></span>
-                    </div>
-                  ) : (
-                    <p className="text-sm font-semibold text-slate-700 italic leading-relaxed mt-1 relative z-10" dir="auto">
-                      {user?.bio ? `"${user.bio}"` : (language === 'ar' ? 'لا يوجد بايو' : 'No Bio')}
-                    </p>
-                  )}
-                </div>
+
               </div>
             </div>
 
