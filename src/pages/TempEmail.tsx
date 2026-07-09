@@ -68,6 +68,7 @@ export default function TempEmail() {
     setIsGeneratingNew(true);
     try {
       const authToken = localStorage.getItem('ff_token');
+      
       const res = await axios.post('/api/user/generate-temp-email', {
         domain: targetDomain,
         force: true
@@ -78,11 +79,13 @@ export default function TempEmail() {
       const newEmail = res.data.temp_email;
       const newPassword = res.data.temp_password;
       
-      const rawUser = localStorage.getItem('ff_user');
-      let user = (rawUser && rawUser !== 'undefined') ? JSON.parse(rawUser) : {};
-      user.temp_email = newEmail;
-      user.temp_password = newPassword;
-      localStorage.setItem('ff_user', JSON.stringify(user));
+      
+        var rawUserLocal = localStorage.getItem('ff_user');
+        var userLocal = (rawUserLocal && rawUserLocal !== 'undefined') ? JSON.parse(rawUserLocal) : {};
+
+      userLocal.temp_email = newEmail;
+      userLocal.temp_password = newPassword;
+      localStorage.setItem('ff_user', JSON.stringify(userLocal));
       
       setEmail(newEmail);
       setPassword(newPassword);
@@ -118,6 +121,7 @@ export default function TempEmail() {
       setIsGeneratingNew(true);
       try {
         const authToken = localStorage.getItem('ff_token');
+        
         const res = await axios.post('/api/user/generate-temp-email', {
           force: true
         }, {
@@ -127,11 +131,13 @@ export default function TempEmail() {
         const newEmail = res.data.temp_email;
         const newPassword = res.data.temp_password;
         
-        const rawUser = localStorage.getItem('ff_user');
-        let user = (rawUser && rawUser !== 'undefined') ? JSON.parse(rawUser) : {};
-        user.temp_email = newEmail;
-        user.temp_password = newPassword;
-        localStorage.setItem('ff_user', JSON.stringify(user));
+        
+        var rawUserLocal = localStorage.getItem('ff_user');
+        var userLocal = (rawUserLocal && rawUserLocal !== 'undefined') ? JSON.parse(rawUserLocal) : {};
+
+        userLocal.temp_email = newEmail;
+        userLocal.temp_password = newPassword;
+        localStorage.setItem('ff_user', JSON.stringify(userLocal));
         
         setEmail(newEmail);
         setPassword(newPassword);
@@ -172,31 +178,43 @@ export default function TempEmail() {
   const initEmail = async () => {
     setLoading(true);
     try {
-      const rawUser = localStorage.getItem('ff_user');
-      let user = (rawUser && rawUser !== 'undefined') ? JSON.parse(rawUser) : {};
       const authToken = localStorage.getItem('ff_token');
+      
+      // Fetch latest user data to sync temp_email
+      let userLocal: any = {};
+      try {
+        const userRes = await axios.get('/api/user/me', {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        userLocal = userRes.data;
+        localStorage.setItem('ff_user', JSON.stringify(userLocal));
+      } catch (err) {
+        var rawUserLocal = localStorage.getItem('ff_user');
+        userLocal = (rawUserLocal && rawUserLocal !== 'undefined') ? JSON.parse(rawUserLocal) : {};
+      }
 
-      if (!user.temp_email || !user.temp_password) {
+      if (!userLocal.temp_email || !userLocal.temp_password) {
          try {
            const res = await axios.post('/api/user/generate-temp-email', {}, {
              headers: { Authorization: `Bearer ${authToken}` }
            });
-           user.temp_email = res.data.temp_email;
-           user.temp_password = res.data.temp_password;
-           localStorage.setItem('ff_user', JSON.stringify(user));
-         } catch (e) {
+           userLocal.temp_email = res.data.temp_email;
+           userLocal.temp_password = res.data.temp_password;
+           localStorage.setItem('ff_user', JSON.stringify(userLocal));
+         } catch (e: any) {
            console.log("Failed to generate temp email", e);
+           alert(language === 'ar' ? 'حدث خطأ أثناء إنشاء البريد الإلكتروني. ' + (e.response?.data?.message || '') : 'Failed to generate email. ' + (e.response?.data?.message || ''));
          }
       }
 
-      if (user.temp_email && user.temp_password) {
-        setEmail(user.temp_email);
-        setPassword(user.temp_password);
+      if (userLocal.temp_email && userLocal.temp_password) {
+        setEmail(userLocal.temp_email);
+        setPassword(userLocal.temp_password);
 
         try {
           const tokenRes = await axios.post('https://api.mail.tm/token', {
-            address: user.temp_email,
-            password: user.temp_password
+            address: userLocal.temp_email,
+            password: userLocal.temp_password
           });
           setToken(tokenRes.data.token);
           fetchMessages(tokenRes.data.token);
@@ -205,15 +223,17 @@ export default function TempEmail() {
           if (authErr?.response?.status === 401) {
             console.log("Unauthorized 401 detected, automatically regenerating temp email...");
             try {
-              const res = await axios.post('/api/user/generate-temp-email', { force: true }, {
+              const res = await axios.post('/api/user/generate-temp-email', { 
+                force: true
+              }, {
                 headers: { Authorization: `Bearer ${authToken}` }
               });
               const newEmail = res.data.temp_email;
               const newPassword = res.data.temp_password;
               
-              user.temp_email = newEmail;
-              user.temp_password = newPassword;
-              localStorage.setItem('ff_user', JSON.stringify(user));
+              userLocal.temp_email = newEmail;
+              userLocal.temp_password = newPassword;
+              localStorage.setItem('ff_user', JSON.stringify(userLocal));
               
               setEmail(newEmail);
               setPassword(newPassword);
@@ -224,8 +244,9 @@ export default function TempEmail() {
               });
               setToken(retryTokenRes.data.token);
               fetchMessages(retryTokenRes.data.token);
-            } catch (recreateErr) {
+            } catch (recreateErr: any) {
               console.log("Failed to automatically regenerate temp email", recreateErr);
+              alert(language === 'ar' ? 'حدث خطأ أثناء إعادة إنشاء البريد الإلكتروني. ' + (recreateErr.response?.data?.message || '') : 'Failed to regenerate email. ' + (recreateErr.response?.data?.message || ''));
             }
           }
         }
@@ -269,14 +290,15 @@ export default function TempEmail() {
       }
 
       setMessages(validMsgs);
+
       
       // Sync to database
       if (validMsgs && validMsgs.length > 0) {
-        const ff_token = localStorage.getItem('ff_token');
-        if (ff_token) {
+        const authToken = localStorage.getItem('ff_token');
+        if (authToken) {
           try {
             const syncRes = await axios.post('/api/messages/sync', { messages: validMsgs }, {
-              headers: { Authorization: `Bearer ${ff_token}` }
+              headers: { Authorization: `Bearer ${authToken}` }
             });
             const seenIds = syncRes.data.seen_messages || [];
             if (seenIds.length > 0) {
@@ -315,6 +337,7 @@ export default function TempEmail() {
           }
         }).catch(() => {});
       }
+      
       const res = await axios.get(`https://api.mail.tm/messages/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -410,7 +433,7 @@ export default function TempEmail() {
                   </div>
                   <div className="flex-1 overflow-hidden">
                     <p className="text-sm font-semibold text-gray-500">{language === 'ar' ? 'YOUR HELP MAIL' : 'YOUR HELP MAIL'}</p>
-                    <p className="font-black text-lg text-gray-900 truncate" dir="ltr">{email}</p>
+                    <p className="font-black text-lg text-gray-900 truncate" dir="ltr">{email || (loading ? (language === 'ar' ? 'جاري التحميل...' : 'Loading...') : (language === 'ar' ? 'حدث خطأ' : 'Error'))}</p>
                   </div>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">

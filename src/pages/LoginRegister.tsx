@@ -12,9 +12,9 @@ export default function LoginRegister() {
   const [accountId, setAccountId] = useState('');
   const [password, setPassword] = useState('');
   const [level, setLevel] = useState('');
-  const [username, setUsername] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState('');
   const [banInfo, setBanInfo] = useState<{isOpen: boolean, msg: string}>({isOpen: false, msg: ''});
   
@@ -28,21 +28,11 @@ export default function LoginRegister() {
   }, [navigate]);
 
   const handleAuth = async () => {
-    if ((!isLogin && !username) || !accountId || !password) {
+    if (!accountId || !password) {
       setError(t('fill_required_data') || 'يرجى ملأ جميع الحقول');
       return;
     }
         
-    if (!isLogin) {
-      if (!/^[a-zA-Z\s]+$/.test(username)) {
-        setError(language === 'ar' ? 'الاسم يجب أن يحتوي على أحرف إنجليزية ومسافات فقط ولا يقبل الأرقام أو الرموز أو الأحرف العربية' : 'Name must contain only English letters and spaces. Numbers, symbols, or Arabic letters are not allowed');
-        return;
-      }
-      if (username.trim().length < 3) {
-        setError(language === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters');
-        return;
-      }
-    }
 
     if (accountId.trim().length < 3) {
       setError(isLogin
@@ -77,62 +67,75 @@ export default function LoginRegister() {
     setError('');
     
     try {
-      const endpoint = isLogin ? '/api/login' : '/api/register';
-      const reqBody: any = { account_id: accountId.trim(), password };
-      
-      if (!isLogin) {
-        reqBody.account_name = username.trim();
-        try {
-           const cleanName = username.trim().toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
-           const randomDigits = Math.floor(1000 + Math.random() * 9000);
-           const cleanUsername = `${cleanName}${randomDigits}`;
-           const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
-           
-           let email = `${cleanUsername}@web-library.net`;
-           let createSuccess = false;
-           
-           try {
-              await axios.post('https://api.mail.tm/accounts', { address: email, password: tempPassword });
-              createSuccess = true;
-           } catch(e: any) {
-              const isAlreadyUsed = JSON.stringify(e?.response?.data || '').includes('already used') || JSON.stringify(e?.response?.data || '').includes('23bd9dbf');
-              if (isAlreadyUsed) {
-                  throw new Error(language === 'ar' ? 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' : 'Email username already used, please choose another name.');
-              }
-              // Try fallback domain
-              const domainsRes = await axios.get('https://api.mail.tm/domains');
-              if (domainsRes.data['hydra:member']?.length > 0) {
-                 const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
-                 email = `${cleanUsername}@${fallbackDomain}`;
-                 await axios.post('https://api.mail.tm/accounts', { address: email, password: tempPassword });
-                 createSuccess = true;
-              }
-           }
-           
-           if (createSuccess) {
-              reqBody.temp_email = email;
-              reqBody.temp_password = tempPassword;
-           }
-        } catch (mailErr: any) {
-             const errMsg = mailErr?.message || '';
-             const isAlreadyUsed = errMsg.includes('مستخدم بالفعل') || errMsg.includes('already used') || JSON.stringify(mailErr?.response?.data || '').includes('already used');
-             if (isAlreadyUsed) {
-                 setError(language === 'ar' ? 'اسم مستخدم البريد الإلكتروني هذا مستخدم بالفعل، يرجى اختيار اسم آخر.' : 'Email username already used, please choose another name.');
-                 setLoading(false);
-                 return;
-             }
-             setError(language === 'ar' ? 'الخادم يواجه ضغطاً حالياً، يرجى المحاولة بعد قليل.' : 'Server is currently experiencing high load, please try again later.');
-             setLoading(false);
-             return;
-        }
-      }
-      
-      const res = await axios.post(endpoint, reqBody);
-      
-      localStorage.setItem('ff_token', res.data.token);
-      localStorage.setItem('ff_user', JSON.stringify(res.data.user));
+      if (isLogin) {
+          const reqBody: any = { account_id: accountId.trim(), password };
+          const res = await axios.post('/api/login', reqBody);
+          localStorage.setItem('ff_token', res.data.token);
+          localStorage.setItem('ff_user', JSON.stringify(res.data.user));
+          navigate('/charge');
+      } else {
+          setLoadingStep('verify');
+          // 1. Check account in game
+          let checkRes;
+          try {
+              checkRes = await axios.post('/api/check-account', { account_id: accountId.trim(), account_name: '' });
+          } catch (err: any) {
+              setError(err.response?.data?.message || (language === 'ar' ? 'فشل التحقق من الحساب' : 'Failed to verify account'));
+              setLoading(false);
+              setLoadingStep('');
+              return;
+          }
 
-      navigate('/charge');
+          setLoadingStep('email');
+          // 2. Generate email
+          const reqBody: any = { 
+              account_id: accountId.trim(), 
+              password,
+              account_name: checkRes.data.account_name,
+              level: checkRes.data.level, likes: checkRes.data.likes
+          };
+
+          try {
+             const cleanName = accountId.trim().toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
+             const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+             const cleanUsername = `${cleanName}ff${randomSuffix}`;
+             const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+             
+             let email = `${cleanUsername}@web-library.net`;
+             let createSuccess = false;
+             
+             try {
+                await axios.post('https://api.mail.tm/accounts', { address: email, password: tempPassword });
+                createSuccess = true;
+             } catch(e: any) {
+                // fallback
+                try {
+                   const domainsRes = await axios.get('https://api.mail.tm/domains');
+                   if (domainsRes.data['hydra:member']?.length > 0) {
+                      const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                      email = `${cleanUsername}@${fallbackDomain}`;
+                      await axios.post('https://api.mail.tm/accounts', { address: email, password: tempPassword });
+                      createSuccess = true;
+                   }
+                } catch (fallbackErr) {
+                   console.warn("Mail.tm registration failed on fallback, using virtual email fallback.", fallbackErr);
+                }
+             }
+             
+             // Always set temp_email and temp_password (even if mail.tm creation fails, we use virtual email fallback so registration is not blocked)
+             reqBody.temp_email = email;
+             reqBody.temp_password = tempPassword;
+          } catch (mailErr: any) {
+             console.error("Mail creation failed", mailErr);
+          }
+
+          setLoadingStep('register');
+          // 3. Register
+          const res = await axios.post('/api/register', reqBody);
+          localStorage.setItem('ff_token', res.data.token);
+          localStorage.setItem('ff_user', JSON.stringify(res.data.user));
+          navigate('/charge');
+      }
     } catch (err: any) {
       if (err.response?.status === 403 && err.response?.data?.status === 'banned') {
         setBanInfo({ isOpen: true, msg: err.response.data.message });
@@ -141,6 +144,7 @@ export default function LoginRegister() {
       }
     } finally {
       setLoading(false);
+      setLoadingStep('');
     }
   };
 
@@ -185,20 +189,7 @@ export default function LoginRegister() {
           </div>
 
           <div className="space-y-4">
-            {!isLogin && (
-              <div>
-                <label className="mb-1.5 block text-sm font-bold text-gray-700">
-                  {language === 'ar' ? 'الاسم' : 'Name'}
-                </label>
-                <input 
-                  type="text" 
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
-                  placeholder={language === 'ar' ? "يرجى إدخال الاسم" : "Please enter your name"}
-                />
-              </div>
-            )}
+            
             <div>
               <label className="mb-1.5 block text-sm font-bold text-gray-700">
                 {isLogin 
@@ -215,6 +206,20 @@ export default function LoginRegister() {
                   : (language === 'ar' ? "يرجى إدخال معرف اللاعب (ID)" : "Please enter your Player ID")}
               />
             </div>
+            {!isLogin && (
+              <div>
+                <label className="mb-1.5 block text-sm font-bold text-gray-700">
+                  {language === 'ar' ? 'بريد الخادم الخاص بك سيكون' : 'Your server email will be'}
+                </label>
+                <input 
+                  type="email" 
+                  readOnly
+                  value={accountId ? `${accountId.trim().toString().toLowerCase().replace(/[^a-z0-9]/g, '')}ff@web-library.net` : ''}
+                  className="w-full rounded-xl border border-gray-300 bg-gray-200 p-4 text-sm font-medium text-gray-700 outline-none transition-all cursor-not-allowed"
+                  dir="ltr"
+                />
+              </div>
+            )}
             <div>
               <label className="mb-1.5 block text-sm font-bold text-gray-700">{t('password')}</label>
               <div className="relative">
@@ -239,7 +244,7 @@ export default function LoginRegister() {
 
             <LoaderButton 
               isLoading={loading}
-              loadingText={isLogin ? (language === 'ar' ? 'جاري الدخول...' : 'Logging in...') : (language === 'ar' ? 'جاري التحقق من الايدي...' : 'Verifying ID...')}
+              loadingText={isLogin ? (language === 'ar' ? 'جاري الدخول...' : 'Logging in...') : (loadingStep === 'verify' ? (language === 'ar' ? 'جاري التحقق من الايدي...' : 'Verifying ID...') : (loadingStep === 'email' ? (language === 'ar' ? 'جاري إنشاء بريد...' : 'Creating email...') : (language === 'ar' ? 'جاري إنشاء الحساب...' : 'Creating account...')))}
               onClick={handleAuth}
               className="mt-2 w-full rounded-xl bg-red-600 py-4 text-lg font-bold text-white shadow-lg shadow-red-600/20 hover:bg-red-700 active:scale-95 transition-all transition-colors"
             >

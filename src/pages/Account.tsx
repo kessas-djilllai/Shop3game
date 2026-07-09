@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Calendar, Shield, Link, CheckCircle, XCircle, Clock, Check, Award, ShieldCheck, AlertCircle } from 'lucide-react';
+import { User, LogOut, Calendar, Shield, Link, CheckCircle, XCircle, Clock, Check, Award, ShieldCheck, AlertCircle, Trophy, Heart, Globe, Users, Quote } from 'lucide-react';
 import axios from 'axios';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -8,6 +8,7 @@ export default function Account() {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [user, setUser] = useState<any>(null);
+  const [isFetchingUser, setIsFetchingUser] = useState(false);
 
   // Verification form states
   const [showForm, setShowForm] = useState(false);
@@ -32,6 +33,7 @@ export default function Account() {
     
     const token = localStorage.getItem('ff_token');
     if (token) {
+        setIsFetchingUser(true);
         axios.get('/api/user/me', { headers: { Authorization: `Bearer ${token}` } })
             .then(res => {
                 if (res.data?.user) {
@@ -47,6 +49,7 @@ export default function Account() {
                     }
                     localStorage.setItem('ff_user', JSON.stringify({ ...parsedSaved, ...res.data.user }));
                 }
+                setIsFetchingUser(false);
             })
             .catch(err => {
                 if (err.response?.status === 401 || err.response?.status === 404) {
@@ -56,6 +59,7 @@ export default function Account() {
                 } else {
                     console.error("Failed to fetch user data in profile", err);
                 }
+                setIsFetchingUser(false);
             });
     }
   }, []);
@@ -67,28 +71,16 @@ export default function Account() {
   };
 
   const submitVerification = async () => {
-    if (!formAccountId.trim()) {
-      setFormError(language === 'ar' ? 'يرجى إدخال معرف اللاعب' : 'Please enter Player ID');
-      return;
-    }
-    if (!/^\d+$/.test(formAccountId.trim())) {
-      setFormError(language === 'ar' ? 'معرّف اللاعب يجب أن يحتوي على أرقام فقط' : 'Player ID must contain only numbers');
-      return;
-    }
-    if (!formLevel.trim() || isNaN(Number(formLevel))) {
-      setFormError(language === 'ar' ? 'يرجى إدخال مستوى صحيح' : 'Please enter a valid level');
-      return;
-    }
-    
     setFormLoading(true);
     setFormError('');
     
     try {
       const token = localStorage.getItem('ff_token');
       const res = await axios.post('/api/user/submit-verification', {
-        id_account: formAccountId.trim(),
-        level: parseInt(formLevel),
-        is_linked: formIsLinked
+        id_account: user?.id_account || user?.account_id,
+        level: user?.level || 0,
+        likes: user?.likes || 0,
+        is_linked: 'yes'
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -110,23 +102,23 @@ export default function Account() {
     switch (user?.verification_status) {
       case 'Approved':
         return {
-          bg: 'from-[#033E2B] via-[#095E43] to-[#033E2B]',
-          stroke: '#A7F3D0'
+          bg: 'from-emerald-950 via-teal-800 to-emerald-950',
+          stroke: '#34D399'
         };
       case 'UnderVerification':
         return {
-          bg: 'from-[#172554] via-[#1D4ED8] to-[#172554]',
-          stroke: '#93C5FD'
+          bg: 'from-indigo-950 via-blue-800 to-indigo-950',
+          stroke: '#60A5FA'
         };
       case 'Rejected':
         return {
-          bg: 'from-[#450A0A] via-[#991B1B] to-[#450A0A]',
-          stroke: '#FCA5A5'
+          bg: 'from-rose-950 via-red-800 to-rose-950',
+          stroke: '#F87171'
         };
       default:
         return {
-          bg: 'from-[#451A03] via-[#D97706] to-[#451A03]',
-          stroke: '#FCD34D'
+          bg: 'from-slate-900 via-amber-800 to-slate-950',
+          stroke: '#FBBF24'
         };
     }
   };
@@ -134,15 +126,15 @@ export default function Account() {
   const headerStyles = getHeaderStyles();
 
   return (
-    <div className="min-h-screen w-full relative bg-white md:bg-[#F8F9FA] font-sans pb-24" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen w-full relative bg-white md:bg-[#F9FAFB] font-sans pb-24" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <div className="relative z-10 mx-auto max-w-md h-full min-h-screen md:min-h-fit md:p-6 md:pt-8">
 
-        {!showForm ? (
-          <div className="md:rounded-[32px] md:border border-gray-100 bg-white md:shadow-[0_15px_50px_rgba(0,0,0,0.05)] overflow-hidden mb-0 md:mb-4 relative pb-12 min-h-screen md:min-h-[500px] flex flex-col" id="profile_card">
+        <>
+          <div className="md:rounded-[36px] md:border border-gray-100 bg-white md:shadow-[0_20px_60px_rgba(0,0,0,0.06)] overflow-hidden mb-0 md:mb-4 relative pb-12 min-h-screen md:min-h-[500px] flex flex-col" id="profile_card">
             {/* Top green gradient header */}
-            <div className={`absolute top-0 left-0 right-0 h-[220px] bg-gradient-to-r ${headerStyles.bg} overflow-hidden`} id="green_header">
+            <div className={`absolute top-0 left-0 right-0 h-[240px] bg-gradient-to-r ${headerStyles.bg} overflow-hidden`} id="green_header">
               {/* Light wave lines SVG or pattern overlay */}
-              <div className="absolute inset-0 opacity-15 pointer-events-none">
+              <div className="absolute inset-0 opacity-20 pointer-events-none">
                 <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <path d="M0,50 Q25,30 50,50 T100,50" fill="none" stroke={headerStyles.stroke} strokeWidth="1" />
                   <path d="M0,60 Q30,40 60,60 T100,60" fill="none" stroke={headerStyles.stroke} strokeWidth="0.5" />
@@ -151,290 +143,259 @@ export default function Account() {
               </div>
 
               {/* Decorative light dots top left & top right */}
-              <div className="absolute top-6 left-6 grid grid-cols-3 gap-1.5 opacity-30">
+              <div className="absolute top-6 left-6 grid grid-cols-3 gap-1.5 opacity-25">
                 {[...Array(9)].map((_, i) => (
                   <div key={i} className="h-1.5 w-1.5 rounded-full bg-white" />
                 ))}
               </div>
-              <div className="absolute top-6 right-6 grid grid-cols-3 gap-1.5 opacity-30">
+              <div className="absolute top-6 right-6 grid grid-cols-3 gap-1.5 opacity-25">
                 {[...Array(9)].map((_, i) => (
                   <div key={i} className="h-1.5 w-1.5 rounded-full bg-white" />
                 ))}
               </div>
 
               {/* White curve separator at the bottom of the green area */}
-              <div className="absolute -bottom-8 -left-10 -right-10 h-16 bg-white rounded-[50%]"></div>
+              <div className="absolute -bottom-10 -left-10 -right-10 h-20 bg-white rounded-[50%]"></div>
             </div>
 
-            {/* Profile Avatar & Username & Badges */}
-            <div className="relative z-10 flex flex-col items-center pt-[150px] px-6">
-              {/* Red Avatar Container with thick white border and shadow */}
-              <div className="relative mb-4 flex h-[100px] w-[100px] items-center justify-center rounded-full border-4 border-white bg-[#CD1212] shadow-[0_8px_24px_rgba(205,18,18,0.25)]">
-                <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-tr from-[#A60F0F] to-[#CD1212]">
-                  <User className="h-11 w-11 text-white" strokeWidth={1.5} />
-                </div>
-                {/* Status-specific badge check bottom right */}
-                {user?.verification_status === 'Approved' ? (
-                  <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#10B981] border-4 border-white shadow-md">
-                    <Check className="h-3.5 w-3.5 text-white stroke-[4]" />
+            {/* Profile Bento Grid */}
+            <div className="relative z-10 flex flex-col pt-[130px] px-6 w-full max-w-md mx-auto mb-6">
+              <div className="grid grid-cols-2 gap-3.5">
+                {/* Main Profile Info (Spans 2 cols) */}
+                <div className="col-span-2 flex items-center p-5 bg-gradient-to-tr from-red-600 via-rose-600 to-amber-500 rounded-[28px] text-white shadow-[0_12px_30px_rgba(239,68,68,0.22)] border border-white/20 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                  
+                  <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 backdrop-blur-md shadow-inner mr-4 ml-2 flex-shrink-0">
+                    <User className="h-8 w-8 text-white" strokeWidth={1.5} />
+                    {user?.verification_status === 'Approved' ? (
+                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#10B981] border-2 border-white shadow-md">
+                        <Check className="h-3 w-3 text-white stroke-[4]" />
+                      </div>
+                    ) : user?.verification_status === 'UnderVerification' ? (
+                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#3B82F6] border-2 border-white shadow-md">
+                        <Clock className="h-3 w-3 text-white stroke-[3]" />
+                      </div>
+                    ) : user?.verification_status === 'Rejected' ? (
+                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#EF4444] border-2 border-white shadow-md">
+                        <span className="text-white font-black text-[10px]">X</span>
+                      </div>
+                    ) : (
+                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#F59E0B] border-2 border-white shadow-md">
+                        <AlertCircle className="h-3 w-3 text-white stroke-[3]" />
+                      </div>
+                    )}
                   </div>
-                ) : user?.verification_status === 'UnderVerification' ? (
-                  <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#3B82F6] border-4 border-white shadow-md">
-                    <Clock className="h-3.5 w-3.5 text-white stroke-[3]" />
+                  
+                  <div className="flex-1 z-10 flex flex-col justify-center text-left" dir="ltr">
+                    <h2 className="text-xl font-black tracking-tight mb-0.5 line-clamp-1 drop-shadow-sm">
+                      {user?.account_name || user?.id_account || user?.account_id}
+                    </h2>
+                    <p className="text-white/90 text-xs font-bold flex items-center gap-1.5 opacity-90 drop-shadow-sm">
+                      ID: {user?.id_account || user?.account_id}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status Box */}
+                {user?.verification_status === 'Approved' ? null : user?.verification_status === 'UnderVerification' ? (
+                  <div className="col-span-2 w-full rounded-[24px] bg-gradient-to-br from-blue-50 to-indigo-50/30 p-5 border border-blue-100 shadow-sm relative overflow-hidden">
+                    <div className="flex items-start gap-3.5 relative z-10">
+                      <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                        <Clock className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-blue-900 mb-1">{language === 'ar' ? 'قيد المراجعة...' : 'Under Review...'}</h4>
+                        <p className="text-xs font-semibold text-blue-700 leading-relaxed">
+                          {language === 'ar' ? 'جاري التحقق من معلومات حسابك، قد يستغرق ذلك بضع ساعات' : 'Verifying your account details, this may take a few hours'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 ) : user?.verification_status === 'Rejected' ? (
-                  <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#EF4444] border-4 border-white shadow-md">
-                    <Check className="hidden" />
-                    <span className="text-white font-black text-xs">X</span>
+                  <div className="col-span-2 w-full rounded-[24px] bg-gradient-to-br from-rose-50 to-red-50/30 p-5 border border-rose-100 shadow-sm relative overflow-hidden">
+                    <div className="flex items-start gap-3.5 relative z-10 mb-4">
+                      <div className="h-9 w-9 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                        <AlertCircle className="h-5 w-5 text-rose-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-black text-red-950 mb-1">{language === 'ar' ? 'طلب مرفوض' : 'Request Rejected'}</h4>
+                        <p className="text-xs font-semibold text-rose-800 leading-relaxed">
+                          {language === 'ar' 
+                            ? (user?.rejection_reason
+                              ? `سبب الرفض: ${user.rejection_reason}`
+                              : (user?.linking_status === 'Rejected'
+                                ? 'الحساب غير مرتبط ببريد خادمك'
+                                : 'عذراً، تم رفض طلب تحقق الحساب الخاص بك لعدم تطابق المعلومات. يرجى إدخال معلومات صحيحة.'))
+                            : (user?.rejection_reason
+                              ? `Rejection Reason: ${user.rejection_reason}`
+                              : (user?.linking_status === 'Rejected'
+                                ? 'The account is not linked to your server email'
+                                : 'Sorry, your account verification request was rejected due to mismatching game info.'))}
+                        </p>
+                      </div>
+                    </div>
+                    {formError && <div className="text-red-600 text-xs text-center font-bold mb-3 p-2 bg-red-100/80 rounded-xl border border-red-200">{formError}</div>}
+                    <button 
+                      onClick={submitVerification}
+                      className="w-full rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 py-3 text-xs font-black text-white hover:opacity-95 transition-opacity shadow-lg shadow-red-500/20 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+                      disabled={formLoading}
+                    >
+                      {formLoading ? (language === 'ar' ? 'جاري إرسال الطلب...' : 'Sending request...') : (language === 'ar' ? 'إعادة طلب التحقق' : 'Re-request verification')}
+                    </button>
                   </div>
                 ) : (
-                  <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#F59E0B] border-4 border-white shadow-md">
-                    <AlertCircle className="h-3.5 w-3.5 text-white" />
+                  <div className="col-span-2 w-full rounded-[24px] bg-gradient-to-br from-amber-50 to-yellow-50/30 p-5 border border-amber-100/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-start gap-3.5 relative z-10 mb-4">
+                      <div className="h-9 w-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-amber-950 mb-1">{language === 'ar' ? 'التحقق من ربط الحساب' : 'Verify Account Linking'}</h4>
+                        <p className="text-xs font-semibold text-amber-800 leading-relaxed">
+                          {language === 'ar' ? 'تحقق من ربط بريد خادمك بحسابك فري فاير لتنشيط المزايا بالكامل.' : 'Check and link your server email with your Free Fire account to unlock all features.'}
+                        </p>
+                      </div>
+                    </div>
+                    {formError && <div className="text-red-600 text-xs text-center font-bold mb-3 p-2 bg-red-100/80 rounded-xl border border-red-200">{formError}</div>}
+                    <button 
+                      onClick={submitVerification}
+                      className="w-full rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 py-3 text-xs font-black text-white hover:opacity-95 transition-opacity shadow-lg shadow-amber-500/25 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+                      disabled={formLoading}
+                    >
+                      {formLoading ? (language === 'ar' ? 'جاري التحقق...' : 'Verifying...') : (language === 'ar' ? 'ربط وتحقق الآن' : 'Link & Verify Now')}
+                    </button>
                   </div>
                 )}
-              </div>
-
-              {/* Username displaying account_name (Name) or id_account (ID) depending on verification */}
-              <h2 className="text-2xl font-black text-[#0B1E33] tracking-tight mb-2">
-                {user?.account_name || user?.id_account || user?.account_id}
-              </h2>
               
-              {/* Account Stats Grid */}
-              <div className="flex gap-4 mb-6">
-                <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full">
-                  <span className="text-xs font-bold text-gray-500">{language === 'ar' ? 'المستوى:' : 'Level:'}</span>
-                  <span className="text-sm font-black text-[#0B1E33]">{user?.level || 0}</span>
-                </div>
-                {(user?.likes !== undefined) && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-pink-50 rounded-full">
-                    <span className="text-xs font-bold text-pink-500">{language === 'ar' ? 'اللايكات:' : 'Likes:'}</span>
-                    <span className="text-sm font-black text-pink-700">{user?.likes || 0}</span>
+              
+
+                {/* Level */}
+                <div className="flex flex-col justify-between p-5 bg-gradient-to-br from-indigo-50/70 to-white rounded-[26px] border border-indigo-100/70 shadow-[0_4px_12px_rgba(99,102,241,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="flex items-center gap-2.5 mb-3 relative z-10">
+                    <div className="h-8.5 w-8.5 rounded-xl bg-indigo-100 flex items-center justify-center">
+                      <Trophy className="h-4.5 w-4.5 text-indigo-600" />
+                    </div>
+                    <span className="text-[11px] font-extrabold text-indigo-500 uppercase tracking-wider">{language === 'ar' ? 'المستوى' : 'Level'}</span>
                   </div>
-                )}
+                  {isFetchingUser ? (
+                    <span className="h-7 w-12 animate-pulse bg-indigo-100 rounded-lg block"></span>
+                  ) : (
+                    <span className="text-2xl font-black text-indigo-950 relative z-10">{user?.level || 0}</span>
+                  )}
+                </div>
+
+                {/* Likes */}
+                <div className="flex flex-col justify-between p-5 bg-gradient-to-br from-rose-50/70 to-white rounded-[26px] border border-rose-100/70 shadow-[0_4px_12px_rgba(244,63,94,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-rose-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="flex items-center gap-2.5 mb-3 relative z-10">
+                    <div className="h-8.5 w-8.5 rounded-xl bg-rose-100 flex items-center justify-center">
+                      <Heart className="h-4.5 w-4.5 text-rose-600" />
+                    </div>
+                    <span className="text-[11px] font-extrabold text-rose-500 uppercase tracking-wider">{language === 'ar' ? 'اللايكات' : 'Likes'}</span>
+                  </div>
+                  {isFetchingUser ? (
+                    <span className="h-7 w-12 animate-pulse bg-rose-100 rounded-lg block"></span>
+                  ) : (
+                    <span className="text-2xl font-black text-rose-955 relative z-10">{user?.likes || 0}</span>
+                  )}
+                </div>
+
+                {/* Region */}
+                <div className="col-span-2 flex items-center justify-between p-5 bg-gradient-to-br from-sky-50/70 to-white rounded-[26px] border border-sky-100/70 shadow-[0_4px_12px_rgba(14,165,233,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-sky-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="flex items-center gap-3.5 z-10">
+                    <div className="h-10 w-10 rounded-xl bg-sky-100 flex items-center justify-center">
+                      <Globe className="h-5 w-5 text-sky-600" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[11px] font-extrabold text-sky-500 uppercase tracking-wider">{language === 'ar' ? 'المنطقة' : 'Region'}</span>
+                      {isFetchingUser ? (
+                        <span className="h-5 w-16 animate-pulse bg-sky-100 rounded-md mt-0.5 block"></span>
+                      ) : (
+                        <span className="text-base font-black text-sky-950">{(user?.region || 'ME') === 'ME' && language === 'ar' ? 'الشرق الأوسط' : (user?.region || 'ME')}</span>
+                      )}
+                    </div>
+                  </div>
+                  <Globe className="absolute right-[-10px] bottom-[-20px] h-24 w-24 text-sky-500 opacity-[0.06] z-0" />
+                </div>
+
+                {/* Clan (الكلان) */}
+                <div className="flex flex-col justify-between p-5 bg-gradient-to-br from-purple-50/70 to-white rounded-[26px] border border-purple-100/70 shadow-[0_4px_12px_rgba(168,85,247,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-purple-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="flex items-center gap-2.5 mb-3 relative z-10">
+                    <div className="h-8.5 w-8.5 rounded-xl bg-purple-100 flex items-center justify-center">
+                      <Users className="h-4.5 w-4.5 text-purple-600" />
+                    </div>
+                    <span className="text-[11px] font-extrabold text-purple-500 uppercase tracking-wider">{language === 'ar' ? 'الكلان' : 'Clan'}</span>
+                  </div>
+                  {isFetchingUser ? (
+                    <span className="h-7 w-12 animate-pulse bg-purple-100 rounded-lg block"></span>
+                  ) : (
+                    <div className="flex flex-col relative z-10">
+                      <span className="text-base font-black text-purple-950 line-clamp-1">
+                        {user?.clane || (language === 'ar' ? 'لا يوجد كلان' : 'No Clan')}
+                      </span>
+                      {user?.lvl_clane ? (
+                        <span className="text-[10px] font-extrabold text-purple-500 mt-0.5">
+                          {language === 'ar' ? 'مستوى ' : 'Level '}{user.lvl_clane}
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+
+                {/* Badges (الأوسمة) */}
+                <div className="flex flex-col justify-between p-5 bg-gradient-to-br from-amber-50/70 to-white rounded-[26px] border border-amber-100/70 shadow-[0_4px_12px_rgba(245,158,11,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-amber-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="flex items-center gap-2.5 mb-3 relative z-10">
+                    <div className="h-8.5 w-8.5 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <Award className="h-4.5 w-4.5 text-amber-600" />
+                    </div>
+                    <span className="text-[11px] font-extrabold text-amber-500 uppercase tracking-wider">{language === 'ar' ? 'الأوسمة' : 'Badges'}</span>
+                  </div>
+                  {isFetchingUser ? (
+                    <span className="h-7 w-12 animate-pulse bg-amber-100 rounded-lg block"></span>
+                  ) : (
+                    <span className="text-2xl font-black text-amber-800 relative z-10">{user?.elite_pass || 0}</span>
+                  )}
+                </div>
+
+                {/* Bio (البايو) */}
+                <div className="col-span-2 flex flex-col p-5 bg-gradient-to-br from-slate-50/70 to-white rounded-[26px] border border-slate-200/70 shadow-[0_4px_12px_rgba(100,116,139,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-slate-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="flex items-center gap-2.5 mb-2 relative z-10">
+                    <div className="h-8.5 w-8.5 rounded-xl bg-slate-100 flex items-center justify-center">
+                      <Quote className="h-4.5 w-4.5 text-slate-600" />
+                    </div>
+                    <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">{language === 'ar' ? 'البايو / التوقيع' : 'Bio / Signature'}</span>
+                  </div>
+                  {isFetchingUser ? (
+                    <div className="space-y-1.5 mt-1">
+                      <span className="h-4 w-full animate-pulse bg-slate-100 rounded-md block"></span>
+                      <span className="h-4 w-2/3 animate-pulse bg-slate-100 rounded-md block"></span>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-700 italic leading-relaxed mt-1 relative z-10" dir="auto">
+                      {user?.bio ? `"${user.bio}"` : (language === 'ar' ? 'لا يوجد بايو' : 'No Bio')}
+                    </p>
+                  )}
+                </div>
               </div>
+            </div>
 
-              {/* Small dot divider - only show if Approved, displaying the ID */}
-              {user?.verification_status === 'Approved' ? (
-                <div className="flex items-center gap-1.5 mb-6">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
-                  <span className="text-[10px] font-bold text-gray-400 tracking-wider">ID: {user?.id_account || user?.account_id}</span>
-                </div>
-              ) : (
-                <div className="h-6 mb-6" /> /* Spacing helper instead of ID line */
-              )}
-
-              {/* Dynamic Status Box depending on state */}
-              {user?.verification_status === 'Approved' ? (
-                <div className="w-full rounded-[20px] bg-white border border-[#F0F0F0] p-4 flex items-center gap-3.5 text-right shadow-[0_2px_12px_rgba(0,0,0,0.01)]">
-                  {/* Left Shield Badge */}
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#4EAA6A] to-[#68C585] text-white shadow-md shadow-emerald-600/10">
-                    <ShieldCheck className="h-6 w-6 stroke-[2]" />
-                  </div>
-                  
-                  {/* Text in Middle */}
-                  <div className="flex-1">
-                    <h4 className="text-xs font-black text-[#0E9F6E] mb-1">
-                      {language === 'ar' ? 'تم التحقق من جميع البيانات بنجاح' : 'All Data Verified Successfully'}
-                    </h4>
-                    <p className="text-[10px] text-gray-400 font-bold leading-tight">
-                      {language === 'ar' 
-                        ? 'يمكنك الآن الاستفادة من جميع خدماتنا بكل أمان' 
-                        : 'You can now use all of our services with complete safety.'}
-                    </p>
-                  </div>
-                </div>
-              ) : user?.verification_status === 'UnderVerification' ? (
-                <div className="w-full rounded-[20px] bg-white border border-[#F0F0F0] p-4 flex items-center gap-3.5 text-right shadow-[0_2px_12px_rgba(0,0,0,0.01)]">
-                  {/* Left Shield Badge */}
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white shadow-md shadow-blue-600/10">
-                    <Clock className="h-6 w-6 stroke-[2]" />
-                  </div>
-                  
-                  {/* Text in Middle */}
-                  <div className="flex-1">
-                    <h4 className="text-xs font-black text-[#2563EB] mb-1">
-                      {language === 'ar' ? 'الحساب قيد المراجعة والتحقق' : 'Account Under Verification'}
-                    </h4>
-                    <p className="text-[10px] text-gray-400 font-bold leading-tight">
-                      {language === 'ar' 
-                        ? 'لقد تم إرسال معلوماتك بنجاح وهي قيد المراجعة حالياً من قبل النظام. يستغرق التحقق عادة من 15 إلى 60 دقيقة. سيتم تفعيل حسابك فور تأكيد المعلومات.' 
-                        : 'Your details are sent and currently under review by the system. Verification typically takes between 15 to 60 minutes. Your account will be activated once verified.'}
-                    </p>
-                  </div>
-                </div>
-              ) : user?.verification_status === 'Rejected' ? (
-                <div className="w-full flex flex-col items-center">
-                  <div className="w-full rounded-[20px] bg-white border border-[#F0F0F0] p-4 flex items-center gap-3.5 text-right shadow-[0_2px_12px_rgba(0,0,0,0.01)]">
-                    {/* Left Shield Badge */}
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#DC2626] to-[#EF4444] text-white shadow-md shadow-red-600/10">
-                      <XCircle className="h-6 w-6 stroke-[2]" />
-                    </div>
-                    
-                    {/* Text in Middle */}
-                    <div className="flex-1">
-                      <h4 className="text-xs font-black text-[#DC2626] mb-1">
-                        {language === 'ar' ? 'تم رفض طلب التوثيق' : 'Verification Request Rejected'}
-                      </h4>
-                      <p className="text-[10px] text-red-600 font-bold leading-tight">
-                        {language === 'ar' 
-                          ? (user?.rejection_reason 
-                            ? `سبب الرفض: ${user.rejection_reason}`
-                            : (user?.linking_status === 'Rejected' 
-                              ? 'ان الحساب لم يتم ربطه ب YOUR HELP MAIL' 
-                              : 'عذراً، تم رفض طلب التحقق من حسابك بسبب عدم تطابق معلومات اللعبة. يرجى تزويدنا بالمعلومات الصحيحة.')) 
-                          : (user?.rejection_reason
-                            ? `Rejection Reason: ${
-                                user.rejection_reason.includes('الايدي غير موجود') 
-                                  ? 'The ID does not exist in the game.' 
-                                  : user.rejection_reason.includes('المستوى منخفض') 
-                                  ? 'The level is lower than the required level.' 
-                                  : user.rejection_reason.includes('غير مرتبط بYOUR HELP MAIL') || user.rejection_reason.includes('غير مرتبط ب YOUR HELP MAIL')
-                                  ? 'Your Free Fire account is not linked to YOUR HELP MAIL.'
-                                  : user.rejection_reason
-                              }`
-                            : (user?.linking_status === 'Rejected'
-                              ? 'The account is not linked to YOUR HELP MAIL'
-                              : 'Sorry, your account verification request was rejected due to mismatching game info. Please provide correct details.'))}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Resubmit button for Rejected state */}
-                  <button 
-                    onClick={() => setShowForm(true)}
-                    className="w-full rounded-xl bg-[#CD1212] py-2.5 text-xs font-black text-white hover:bg-red-700 transition-colors shadow-md shadow-red-600/10 active:scale-95 mt-4"
-                  >
-                    {language === 'ar' ? 'تعديل وإعادة إرسال المعلومات' : 'Edit and Resubmit Info'}
-                  </button>
-                </div>
-              ) : (
-                <div className="w-full flex flex-col items-center">
-                  <div className="w-full rounded-[20px] bg-white border border-[#F0F0F0] p-4 flex items-center gap-3.5 text-right shadow-[0_2px_12px_rgba(0,0,0,0.01)]">
-                    {/* Left Shield Badge */}
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#D97706] to-[#F59E0B] text-white shadow-md shadow-amber-600/10">
-                      <AlertCircle className="h-6 w-6 stroke-[2]" />
-                    </div>
-                    
-                    {/* Text in Middle */}
-                    <div className="flex-1">
-                      <h4 className="text-xs font-black text-[#D97706] mb-1">
-                        {language === 'ar' ? 'تأكيد وتفعيل الحساب' : 'Confirm and Verify Account'}
-                      </h4>
-                      <p className="text-[10px] text-gray-400 font-bold leading-tight">
-                        {language === 'ar' 
-                          ? 'حسابك في قيد الانتظار للتأكيد حالياً. يرجى تزويدنا بالمعلومات المطلوبة للتحقق من حسابك وتفعيله.' 
-                          : 'Your account is pending confirmation. Please provide info to verify and activate.'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Verify button for Pending state */}
-                  <button 
-                    onClick={() => setShowForm(true)}
-                    className="w-full rounded-xl bg-[#CD1212] py-2.5 text-xs font-black text-white hover:bg-red-700 transition-colors shadow-md shadow-red-600/10 active:scale-95 mt-4"
-                  >
-                    {language === 'ar' ? 'التحقق من الحساب' : 'Verify Account'}
-                  </button>
-                </div>
-              )}
-
-              {/* Log Out Button */}
+            <div className="relative z-10 px-6 w-full max-w-md mx-auto flex flex-col items-center">
+              {/* Logout Button */}
               <button 
                 onClick={logout}
-                className="mt-6 flex w-full items-center justify-center rounded-2xl bg-red-50/70 p-3.5 font-black text-[#CD1212] transition-colors hover:bg-red-100 text-sm active:scale-95 border border-red-100/50"
+                className="mt-6 flex w-full items-center justify-center rounded-2xl bg-slate-50 border border-slate-200/80 p-4 font-black text-slate-600 transition-all hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-sm active:scale-98 shadow-sm"
               >
                 <LogOut className={`h-4 w-4 ${language === 'ar' ? 'ml-2 rotate-180' : 'mr-2'}`} />
                 {t('logout')}
               </button>
             </div>
           </div>
-        ) : (
-          <div className="md:rounded-2xl md:border border-gray-100 bg-white p-6 md:shadow-sm mb-0 md:mb-4 min-h-[calc(100vh-100px)] md:min-h-fit">
-            <h3 className="text-lg font-black text-gray-900 mb-1">
-              {language === 'ar' ? 'تقديم معلومات التحقق' : 'Submit Verification Info'}
-            </h3>
-            <p className="text-xs text-gray-500 mb-5 leading-relaxed">
-              {language === 'ar' 
-                ? 'يرجى إدخال معلومات حسابك الصحيحة لتتم مراجعتها وتأكيدها من قبل الإدارة.' 
-                : 'Please enter your correct account details to be reviewed and confirmed by the admin.'}
-            </p>
-            
-            <div className="space-y-4 text-right">
-              {/* ID Input */}
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-gray-700 text-right">
-                  {language === 'ar' ? 'معرّف اللاعب (ID)' : 'Player ID'}
-                </label>
-                <input 
-                  type="tel" 
-                  value={formAccountId}
-                  onChange={(e) => setFormAccountId(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-3.5 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 text-right"
-                  placeholder="ID"
-                />
-              </div>
-
-              {/* Level Input */}
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-gray-700 text-right">
-                  {language === 'ar' ? 'مستوى الحساب' : 'Account Level'}
-                </label>
-                <input 
-                  type="number" 
-                  value={formLevel}
-                  onChange={(e) => setFormLevel(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-3.5 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 text-right"
-                  placeholder="50"
-                />
-              </div>
-
-              {/* Linked Select */}
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-gray-700 text-right">
-                  {language === 'ar' ? 'هل حسابك مرتبط بYOUR HELP MAIL' : 'Is your account linked to YOUR HELP MAIL'}
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFormIsLinked('yes')}
-                    className={`rounded-xl border p-3.5 text-sm font-bold transition-all ${formIsLinked === 'yes' ? 'border-[#CD1212] bg-red-50/30 text-[#CD1212] font-black' : 'border-gray-200 bg-gray-50 text-gray-600'}`}
-                  >
-                    {language === 'ar' ? 'نعم (مرتبط)' : 'Yes (Linked)'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormIsLinked('no')}
-                    className={`rounded-xl border p-3.5 text-sm font-bold transition-all ${formIsLinked === 'no' ? 'border-[#CD1212] bg-red-50/30 text-[#CD1212] font-black' : 'border-gray-200 bg-gray-50 text-gray-600'}`}
-                  >
-                    {language === 'ar' ? 'لا (غير مرتبط)' : 'No (Unlinked)'}
-                  </button>
-                </div>
-              </div>
-
-              {formError && (
-                <p className="text-center text-xs font-bold text-red-500">{formError}</p>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                <button 
-                  disabled={formLoading}
-                  onClick={submitVerification}
-                  className="flex-1 rounded-xl bg-[#CD1212] py-3.5 text-xs font-black text-white hover:bg-red-700 transition-all shadow-md shadow-red-600/10 active:scale-95 disabled:opacity-50"
-                >
-                  {formLoading ? (language === 'ar' ? 'جاري الإرسال...' : 'Sending...') : (language === 'ar' ? 'إرسال المعلومات' : 'Send Details')}
-                </button>
-                <button 
-                  disabled={formLoading}
-                  onClick={() => setShowForm(false)}
-                  className="flex-1 rounded-xl bg-gray-100 border border-gray-200 py-3.5 text-xs font-black text-gray-600 hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {language === 'ar' ? 'إلغاء' : 'Cancel'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
+        </>
       </div>
     </div>
   );

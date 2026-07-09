@@ -352,11 +352,14 @@ export default function Charge() {
       const vText = vStat === 'Rejected' 
         ? (language === 'ar' ? 'مرفوض' : 'Rejected') 
         : (language === 'ar' ? 'قيد التأكيد' : 'Pending Confirmation');
-      const failReason = language === 'ar' 
-        ? `حسابك غير مفعل ومؤكد (الحالة: ${vText})` 
-        : `Your account is not active and verified (Status: ${vText})`;
+      const exactAr = vStat === 'Rejected' 
+        ? "لا يمكنك طلب الشحن لأن حسابك مرفوض" 
+        : "لا يمكنك طلب الشحن لأن حسابك مزال قيد المراجعة";
+      const exactEn = vStat === 'Rejected'
+        ? "You cannot request top-up because your account is rejected."
+        : "You cannot request top-up because your account is still under review.";
       
-      handleVerificationFailure(processingMsgId, failReason, vStat);
+      handleVerificationFailure(processingMsgId, "", vStat, exactAr, exactEn);
       return;
     }
 
@@ -448,7 +451,7 @@ export default function Charge() {
     }
   };
 
-  const handleVerificationFailure = (processingMsgId: string, failReason: string, status: string) => {
+  const handleVerificationFailure = (processingMsgId: string, failReason: string, status: string, exactMessageAr?: string, exactMessageEn?: string) => {
     setIsTyping(false);
     setMessages(prev => prev.filter(msg => msg.id !== processingMsgId));
     
@@ -466,8 +469,8 @@ export default function Charge() {
         id: Date.now().toString(),
         sender: 'ai',
         text: language === 'ar'
-          ? `❌ فشل طلب الشحن بسبب التالي:\n• ${failReason}.\n\n${hintMessageAr}`
-          : `❌ Charge request failed due to the following:\n• ${failReason}.\n\n${hintMessageEn}`,
+          ? (exactMessageAr || `❌ فشل طلب الشحن بسبب التالي:\n• ${failReason}.\n\n${hintMessageAr}`)
+          : (exactMessageEn || `❌ Charge request failed due to the following:\n• ${failReason}.\n\n${hintMessageEn}`),
         type: 'done'
       }
     ]);
@@ -492,12 +495,22 @@ export default function Charge() {
     switch (currentMessageType) {
       case 'start':
         return (
-          <button 
-            onClick={handleStart}
-            className="w-full sm:w-auto bg-[#CD1212] hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-red-600/20 active:scale-95 transition-all text-sm flex items-center justify-center gap-2 mt-2"
-          >
-            {language === 'ar' ? 'البدء' : 'Start'}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2.5 mt-2 w-full sm:w-auto">
+            <button 
+              onClick={handleStart}
+              className="w-full sm:w-auto bg-[#CD1212] hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-red-600/20 active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
+            >
+              {language === 'ar' ? 'البدء' : 'Start'}
+            </button>
+            <a 
+              href="https://youtu.be/rUEynPL62MQ?si=IRbzOZiqhnlYEPju"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto bg-white border border-gray-200 text-gray-700 hover:text-red-600 hover:border-red-200 font-bold py-3 px-6 rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
+            >
+              {language === 'ar' ? 'طريقة استخدام المنصة' : 'How to use the platform'}
+            </a>
+          </div>
         );
       case 'charged_before_question':
         return (
@@ -599,10 +612,10 @@ export default function Charge() {
       case 'done':
         return (
           <button 
-            onClick={() => navigate('/my-orders')}
+            onClick={() => navigate('/account')}
             className="w-full sm:w-auto bg-[#CD1212] hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-red-600/20 active:scale-95 transition-all text-sm flex items-center justify-center gap-2 mt-3"
           >
-            {language === 'ar' ? 'الذهاب إلى طلباتي' : 'Go to My Orders'}
+            {language === 'ar' ? 'الانتقال الى الملف الشخصي' : 'Go to Profile'}
             <ArrowLeft className={`h-5 w-5 ${language === 'ar' ? 'rotate-0' : 'rotate-180'}`} />
           </button>
         );
@@ -676,28 +689,8 @@ export default function Charge() {
                   </div>
                 )}
               </div>
-
-              {msg.sender === 'user' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mt-1">
-                  <User className="h-4 w-4 text-gray-500" />
-                </div>
-              )}
             </div>
           ))}
-          
-          {isTyping && !isCurrentlyChecking && (
-            <div className="flex gap-3 justify-start items-start">
-              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-[#CD1212] to-red-600 flex items-center justify-center shadow-md mt-1 border border-red-500/20">
-                <Bot className="h-4.5 w-4.5 text-white" />
-              </div>
-              <div className="bg-white border border-gray-100 shadow-sm rounded-3xl rounded-tr-none px-6 py-4 flex items-center justify-center gap-1.5 w-20">
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-typing-1"></div>
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-typing-2"></div>
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-typing-3"></div>
-              </div>
-            </div>
-          )}
-          
           <div ref={messagesEndRef} />
         </div>
       </main>
