@@ -6,6 +6,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 import sanitizeHtml from 'sanitize-html';
 import nodemailer from 'nodemailer';
+import ffStalk from 'x-ff-stalk';
 
 const app = express();
 app.use(express.json());
@@ -223,13 +224,29 @@ app.post('/api/register', async (req, res) => {
     account_id = account_id.replace(/[<>'"/;`%,]/g, '');
 
     try {
+        let ffData = null;
+        try {
+            ffData = await ffStalk(account_id);
+            if (!ffData || !ffData.success || !ffData.data || !ffData.data.basic) {
+                return res.status(400).json({ message: 'معرف اللاعب (ID) غير صحيح أو غير موجود في اللعبة' });
+            }
+        } catch (e) {
+            return res.status(400).json({ message: 'حدث خطأ أثناء التحقق من معرف اللاعب. تأكد من صحته.' });
+        }
+
+        let account_name = sanitizeHtml(ffData.data.basic.name || account_id, {
+            allowedTags: [],
+            allowedAttributes: {}
+        }).replace(/[<>'"/;`%,]/g, '').trim();
+        let level = ffData.data.basic.level || 0;
+
         const { data: existing } = await supabase
             .from('users')
             .select('id')
-            .or(`id_account.eq."${account_id}",account_name.eq."${account_id}"`)
+            .or(`id_account.eq."${account_id}",account_name.eq."${account_name}"`)
             .maybeSingle();
         
-        if (existing) return res.status(400).json({ message: 'الاسم مسجل مسبقاً' });
+        if (existing) return res.status(400).json({ message: 'الحساب مسجل مسبقاً' });
 
         // Use temp_email from request if provided (client-side generation bypasses Vercel limits), otherwise generate on server
         let temp_email = req.body.temp_email || null;
@@ -280,7 +297,7 @@ app.post('/api/register', async (req, res) => {
         let newUser, error;
         const result = await supabase
             .from('users')
-            .insert([{ id_account: account_id, password: password, temp_email, temp_password, level: 0, account_name: account_id }])
+            .insert([{ id_account: account_id, password: password, temp_email, temp_password, level: level, account_name: account_name }])
             .select()
             .single();
             
@@ -590,14 +607,35 @@ app.get('/api/user/me', async (req, res) => {
         }
 
         const parsedStatuses = parseUserStatuses(user.verification_status);
+
+        let ffLikes = 0;
+        let ffLevel = user.level;
+        let ffName = user.account_name;
+        
+        try {
+            if (user.id_account) {
+                const ffData = await ffStalk(user.id_account);
+                if (ffData && ffData.success && ffData.data && ffData.data.basic) {
+                    ffLikes = ffData.data.basic.likes || 0;
+                    ffLevel = ffData.data.basic.level || ffLevel;
+                    ffName = ffData.data.basic.name || ffName;
+                    
+                    if (ffLevel !== user.level || ffName !== user.account_name) {
+                        supabase.from('users').update({ level: ffLevel, account_name: ffName }).eq('id', user.id).then();
+                    }
+                }
+            }
+        } catch (e) {}
+
         res.json({ 
             status: 'success', 
             user: { 
                 id: user.id, 
                 account_id: user.id_account, 
-                level: user.level, 
+                level: ffLevel,
+                likes: ffLikes,
                 ...parsedStatuses, 
-                account_name: user.account_name,
+                account_name: ffName,
                 cooldown_minutes: cooldownMinutes
             } 
         });

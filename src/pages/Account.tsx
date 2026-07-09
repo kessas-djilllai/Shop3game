@@ -198,6 +198,20 @@ export default function Account() {
               <h2 className="text-2xl font-black text-[#0B1E33] tracking-tight mb-2">
                 {user?.account_name || user?.id_account || user?.account_id}
               </h2>
+              
+              {/* Account Stats Grid */}
+              <div className="flex gap-4 mb-6">
+                <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full">
+                  <span className="text-xs font-bold text-gray-500">{language === 'ar' ? 'المستوى:' : 'Level:'}</span>
+                  <span className="text-sm font-black text-[#0B1E33]">{user?.level || 0}</span>
+                </div>
+                {(user?.likes !== undefined) && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-pink-50 rounded-full">
+                    <span className="text-xs font-bold text-pink-500">{language === 'ar' ? 'اللايكات:' : 'Likes:'}</span>
+                    <span className="text-sm font-black text-pink-700">{user?.likes || 0}</span>
+                  </div>
+                )}
+              </div>
 
               {/* Small dot divider - only show if Approved, displaying the ID */}
               {user?.verification_status === 'Approved' ? (

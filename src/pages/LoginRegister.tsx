@@ -28,14 +28,18 @@ export default function LoginRegister() {
   }, [navigate]);
 
   const handleAuth = async () => {
-    if (!accountId || !password) {
+    if ((!isLogin && !username) || !accountId || !password) {
       setError(t('fill_required_data') || 'يرجى ملأ جميع الحقول');
       return;
     }
-    
+        
     if (!isLogin) {
-      if (!/^[a-zA-Z\s]+$/.test(accountId)) {
+      if (!/^[a-zA-Z\s]+$/.test(username)) {
         setError(language === 'ar' ? 'الاسم يجب أن يحتوي على أحرف إنجليزية ومسافات فقط ولا يقبل الأرقام أو الرموز أو الأحرف العربية' : 'Name must contain only English letters and spaces. Numbers, symbols, or Arabic letters are not allowed');
+        return;
+      }
+      if (username.trim().length < 3) {
+        setError(language === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters');
         return;
       }
     }
@@ -43,7 +47,7 @@ export default function LoginRegister() {
     if (accountId.trim().length < 3) {
       setError(isLogin
         ? (language === 'ar' ? 'الاسم أو معرّف اللاعب يجب أن يكون 3 أحرف على الأقل' : 'Name or Player ID must be at least 3 characters')
-        : (language === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters')
+        : (language === 'ar' ? 'معرف اللاعب يجب أن يكون 3 أحرف على الأقل' : 'Player ID must be at least 3 characters')
       );
       return;
     }
@@ -75,11 +79,11 @@ export default function LoginRegister() {
     try {
       const endpoint = isLogin ? '/api/login' : '/api/register';
       const reqBody: any = { account_id: accountId.trim(), password };
-
-      // Generate email from the browser IP to avoid Vercel rate-limits on register
+      
       if (!isLogin) {
+        reqBody.account_name = username.trim();
         try {
-           const cleanName = accountId.trim().toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
+           const cleanName = username.trim().toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
            const randomDigits = Math.floor(1000 + Math.random() * 9000);
            const cleanUsername = `${cleanName}${randomDigits}`;
            const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
@@ -181,11 +185,25 @@ export default function LoginRegister() {
           </div>
 
           <div className="space-y-4">
+            {!isLogin && (
+              <div>
+                <label className="mb-1.5 block text-sm font-bold text-gray-700">
+                  {language === 'ar' ? 'الاسم' : 'Name'}
+                </label>
+                <input 
+                  type="text" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
+                  placeholder={language === 'ar' ? "يرجى إدخال الاسم" : "Please enter your name"}
+                />
+              </div>
+            )}
             <div>
               <label className="mb-1.5 block text-sm font-bold text-gray-700">
                 {isLogin 
                   ? (language === 'ar' ? 'الاسم أو معرف اللاعب (ID)' : 'Name or Player ID')
-                  : (language === 'ar' ? 'الاسم' : 'Name')}
+                  : (language === 'ar' ? 'معرف اللاعب (ID)' : 'Player ID')}
               </label>
               <input 
                 type="text" 
@@ -194,7 +212,7 @@ export default function LoginRegister() {
                 className="w-full rounded-xl border border-gray-300 bg-gray-50 p-4 text-sm font-medium text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
                 placeholder={isLogin 
                   ? (language === 'ar' ? "يرجى إدخال الاسم أو معرف اللاعب (ID)" : "Please enter your name or Player ID")
-                  : (language === 'ar' ? "يرجى إدخال الاسم" : "Please enter your name")}
+                  : (language === 'ar' ? "يرجى إدخال معرف اللاعب (ID)" : "Please enter your Player ID")}
               />
             </div>
             <div>
@@ -221,6 +239,7 @@ export default function LoginRegister() {
 
             <LoaderButton 
               isLoading={loading}
+              loadingText={isLogin ? (language === 'ar' ? 'جاري الدخول...' : 'Logging in...') : (language === 'ar' ? 'جاري التحقق من الايدي...' : 'Verifying ID...')}
               onClick={handleAuth}
               className="mt-2 w-full rounded-xl bg-red-600 py-4 text-lg font-bold text-white shadow-lg shadow-red-600/20 hover:bg-red-700 active:scale-95 transition-all transition-colors"
             >
