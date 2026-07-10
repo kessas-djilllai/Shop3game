@@ -7,9 +7,14 @@ import crypto from 'crypto';
 import sanitizeHtml from 'sanitize-html';
 import nodemailer from 'nodemailer';
 import ffStalk from 'x-ff-stalk';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
-app.use(express.json());
+// Increase body limits to allow large base64 video uploads (up to 50MB)
+app.use(express.json({ limit: '60mb' }));
+app.use(express.urlencoded({ limit: '60mb', extended: true }));
+app.use('/public', express.static(path.join(process.cwd(), 'public')));
 
 const JWT_SECRET = 'ff_super_secret_key_123';
 const supabaseUrl = process.env.SUPABASE_URL || '';
@@ -24,7 +29,7 @@ async function fetchFullFFProfile(uid: string) {
                 "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36",
                 "Accept": "application/json"
             },
-            timeout: 12000
+            timeout: 4000
         });
 
         if (res.data && res.data.success && res.data.result) {
@@ -51,7 +56,7 @@ async function fetchFullFFProfile(uid: string) {
             };
         }
     } catch (e: any) {
-        console.warn("00cc API failed in fetchFullFFProfile:", e.message);
+        console.warn("00cc API failed in fetchFullFFProfile (falling back):", e.message);
     }
 
     // 2. Try ffStalk library
@@ -80,12 +85,12 @@ async function fetchFullFFProfile(uid: string) {
             };
         }
     } catch (err: any) {
-        console.warn("ffStalk failed in fetchFullFFProfile:", err.message);
+        console.warn("ffStalk failed in fetchFullFFProfile (falling back):", err.message);
     }
 
     // 3. Try freefireinfo API
     try {
-        const res = await axios.get(`https://freefireinfo-zy9l.onrender.com/api/v1/player-profile?uid=${uid}&server=ME`, { timeout: 8000 });
+        const res = await axios.get(`https://freefireinfo-zy9l.onrender.com/api/v1/player-profile?uid=${uid}&server=ME`, { timeout: 4000 });
         if (res.data && res.data.status === 'success' && res.data.player) {
             const p = res.data.player;
             return {
@@ -110,7 +115,7 @@ async function fetchFullFFProfile(uid: string) {
             };
         }
     } catch (ffiErr: any) {
-        console.warn("freefireinfo API failed in fetchFullFFProfile:", ffiErr.message);
+        console.warn("freefireinfo API failed in fetchFullFFProfile (falling back):", ffiErr.message);
     }
 
     // 4. Ultimate Fallback (Mock player data to ensure the app is NEVER blocked or crash due to external APIs)
@@ -353,19 +358,30 @@ async function createMailTMAccount(username: string, domain: string, password: s
         });
         return email;
     } catch (err: any) {
-        const isAlreadyUsed = err?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
+        const isAlreadyUsed = err?.response?.status === 422 ||
+                              err?.response?.data?.violations?.some((v: any) => v.message?.includes('already used') || v.code === '23bd9dbf-6b9b-41cd-a99e-4844bcf3077f') || 
                               JSON.stringify(err?.response?.data || '').includes('already used') ||
                               JSON.stringify(err?.response?.data || '').includes('23bd9dbf-6b9b-41cd-a99e-4844bcf3077f');
-        if (isAlreadyUsed && allowSuffix) {
-            const randomSuffix = crypto.randomBytes(3).toString('hex');
-            const suffixedUsername = `${username}${randomSuffix}`;
-            email = `${suffixedUsername}@${domain}`;
-            console.log(`Email address was already used. Retrying with unique address: ${email}`);
-            await axios.post('https://api.mail.tm/accounts', {
-                address: email,
-                password: password
-            });
-            return email;
+        if (isAlreadyUsed) {
+            if (allowSuffix) {
+                const randomSuffix = crypto.randomBytes(3).toString('hex');
+                const suffixedUsername = `${username}${randomSuffix}`;
+                email = `${suffixedUsername}@${domain}`;
+                console.log(`Email address was already used. Retrying with unique address: ${email}`);
+                try {
+                    await axios.post('https://api.mail.tm/accounts', {
+                        address: email,
+                        password: password
+                    });
+                } catch (retryErr: any) {
+                    console.log(`Retry registration failed (will return fallback): ${retryErr.message}`);
+                }
+                return email;
+            } else {
+                // Address is already taken, which means registration has already been completed (or completed client-side)
+                console.log(`Email address ${email} already registered on Mail.tm on-the-fly. Proceeding gracefully...`);
+                return email;
+            }
         } else {
             throw err;
         }
@@ -1414,6 +1430,34 @@ app.post('/api/admin/promo-code', async (req, res) => {
         res.json({ status: 'success' });
     } catch (e) {
         res.status(403).json({ message: 'Unauthorized' });
+    }
+});
+
+// Admin: Upload Video
+app.post('/api/admin/upload-video', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    const { videoData } = req.body;
+    try {
+        const decoded: any = jwt.verify(token!, JWT_SECRET);
+        if (!decoded.isAdmin) throw new Error();
+
+        if (!videoData) {
+            return res.status(400).json({ message: 'No video data provided' });
+        }
+
+        const safeName = 'explain.mp4';
+        const buffer = Buffer.from(videoData, 'base64');
+        const publicDir = path.join(process.cwd(), 'public');
+        
+        if (!fs.existsSync(publicDir)) {
+            fs.mkdirSync(publicDir, { recursive: true });
+        }
+        
+        fs.writeFileSync(path.join(publicDir, safeName), buffer);
+        res.json({ success: true, url: `/public/${safeName}` });
+    } catch (e: any) {
+        console.error(e);
+        res.status(500).json({ message: e.message || 'Error uploading video' });
     }
 });
 

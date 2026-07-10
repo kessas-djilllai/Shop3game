@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Search, Trash2, ShieldAlert, ShieldCheck, CheckCircle, Check, XCircle, Clock, Menu, X, Filter, LogOut, ArrowRight, User, ClipboardList, Sparkles, Copy, Mail, Globe, RefreshCcw, ArrowLeft, BarChart3 } from 'lucide-react';
+import { Search, Trash2, ShieldAlert, ShieldCheck, CheckCircle, Check, XCircle, Clock, Menu, X, Filter, LogOut, ArrowRight, User, ClipboardList, Sparkles, Copy, Mail, Globe, RefreshCcw, ArrowLeft, BarChart3, Video, Upload } from 'lucide-react';
 import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
 import DOMPurify from 'dompurify';
@@ -56,6 +56,11 @@ export default function Admin() {
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [isPromoLoading, setIsPromoLoading] = useState(false);
   const [currentPromo, setCurrentPromo] = useState('');
+  
+  // Video upload state
+  const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const [videoUploadStatus, setVideoUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [videoKey, setVideoKey] = useState(Date.now());
   
   // Badges tracking state
   const [lastSeenPendingOrders, setLastSeenPendingOrders] = useState<number>(0);
@@ -143,6 +148,55 @@ export default function Admin() {
       alert(e.response?.data?.message || 'حدث خطأ');
     } finally {
       setIsPromoLoading(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      alert('يرجى اختيار ملف فيديو صحيح (MP4 مثلاً)');
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      alert('حجم الفيديو كبير جداً. الحد الأقصى هو 50 ميغابايت.');
+      return;
+    }
+
+    setIsVideoUploading(true);
+    setVideoUploadStatus('idle');
+
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64Data = (reader.result as string).split(',')[1];
+        const adminToken = localStorage.getItem('ff_admin_token');
+        
+        const res = await axios.post('/api/admin/upload-video', {
+          videoData: base64Data,
+          fileName: file.name
+        }, {
+          headers: { Authorization: `Bearer ${adminToken}` }
+        });
+
+        if (res.data.success) {
+          setVideoUploadStatus('success');
+          setVideoKey(Date.now());
+          alert('تم رفع الفيديو بنجاح!');
+        } else {
+          setVideoUploadStatus('error');
+          alert('فشل رفع الفيديو');
+        }
+        setIsVideoUploading(false);
+      };
+    } catch (err) {
+      console.error(err);
+      setVideoUploadStatus('error');
+      alert('حدث خطأ في رفع الفيديو');
+      setIsVideoUploading(false);
     }
   };
 
@@ -1153,6 +1207,54 @@ export default function Admin() {
                 >
                   حفظ وتنشيط الكود
                 </LoaderButton>
+              </div>
+            </div>
+
+            {/* فيديو شرح طريقة الاستخدام */}
+            <h2 className="mt-8 mb-2 text-gray-800 font-black px-2 flex items-center gap-2 text-lg">
+              <Video className="h-5 w-5 text-[#CD1212]" />
+              فيديو شرح طريقة استخدام المنصة
+            </h2>
+            <div className="rounded-3xl border border-gray-100 bg-white p-6 md:p-8 shadow-sm flex flex-col gap-6">
+              <p className="text-xs text-gray-500 font-bold leading-relaxed">
+                هنا يمكنك رفع فيديو من جهازك ليشاهده الأعضاء مباشرة في المحادثة عند النقر على زر "طريقة استخدام المنصة".
+              </p>
+              
+              <div>
+                <label className="block text-xs font-black text-gray-400 mb-2">الفيديو الحالي:</label>
+                <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 p-2 text-center">
+                  <video 
+                    key={videoKey}
+                    src="/public/explain.mp4" 
+                    controls 
+                    className="w-full max-h-[220px] object-contain rounded-xl bg-black"
+                  />
+                  <p className="text-[10px] text-gray-400 font-bold mt-2">
+                    المسار: /public/explain.mp4 (سيتم استبداله تلقائياً عند رفع فيديو جديد)
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-500 mb-2 mr-1">رفع فيديو جديد من الجهاز (صيغة MP4):</label>
+                <div className="flex items-center justify-center w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-gray-100/50 hover:border-red-300 transition-all">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                      <p className="text-xs font-bold text-gray-500 text-center px-4">
+                        {isVideoUploading ? 'جاري الرفع والتحميل...' : 'اضغط لاختيار فيديو MP4 من جهازك'}
+                      </p>
+                      <p className="text-[10px] text-gray-400 font-bold mt-1">الحد الأقصى 50 ميجابايت</p>
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="video/*" 
+                      onChange={handleVideoUpload}
+                      disabled={isVideoUploading}
+                      className="hidden" 
+                    />
+                  </label>
+                </div>
               </div>
             </div>
           </div>

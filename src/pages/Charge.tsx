@@ -41,6 +41,7 @@ interface Message {
   sender: 'ai' | 'user';
   text: string;
   type?: MessageType;
+  videoUrl?: string;
 }
 
 const getRandomTypingTime = () => Math.floor(Math.random() * (5000 - 2000 + 1)) + 2000;
@@ -171,6 +172,29 @@ export default function Charge() {
 
   const addUserMessage = (text: string) => {
     setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user', text, type: 'text' }]);
+  };
+
+  const handleShowUsageVideo = () => {
+    addUserMessage(language === 'ar' ? 'طريقة استخدام المنصة' : 'How to use the platform');
+    setIsTyping(true);
+    
+    setTimeout(() => {
+      setIsTyping(false);
+      const newId = Date.now().toString();
+      setActiveTypingId(newId);
+      setMessages(prev => [
+        ...prev, 
+        { 
+          id: newId, 
+          sender: 'ai', 
+          text: language === 'ar' 
+            ? 'إليك فيديو توضيحي يشرح طريقة استخدام المنصة بالتفصيل. يمكنك تشغيله مباشرة من هنا:' 
+            : 'Here is an explanatory video showing you how to use the platform in detail. You can watch it directly here:', 
+          type: 'start',
+          videoUrl: '/public/explain.mp4' 
+        }
+      ]);
+    }, 1500);
   };
 
   const handleStart = async () => {
@@ -520,14 +544,12 @@ export default function Charge() {
             >
               {language === 'ar' ? 'البدء' : 'Start'}
             </button>
-            <a 
-              href="https://youtu.be/rUEynPL62MQ?si=IRbzOZiqhnlYEPju"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button 
+              onClick={handleShowUsageVideo}
               className="w-full sm:w-auto bg-white border border-gray-200 text-gray-700 hover:text-red-600 hover:border-red-200 font-bold py-3 px-6 rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
             >
               {language === 'ar' ? 'طريقة استخدام المنصة' : 'How to use the platform'}
-            </a>
+            </button>
           </div>
         );
       case 'charged_before_question':
@@ -716,6 +738,18 @@ export default function Charge() {
                 ) : (
                   msg.text
                 )}
+
+                {msg.videoUrl && (
+                  <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-black/5 shadow-sm">
+                    <video 
+                      src={msg.videoUrl} 
+                      controls 
+                      playsInline
+                      className="w-full max-h-[300px] object-contain rounded-xl bg-black"
+                    />
+                  </div>
+                )}
+
                 {msg.sender === 'ai' && msg.id === messages[messages.length - 1]?.id && (
                   <div className="mt-2">
                     {renderOptions()}
