@@ -26,6 +26,9 @@ export default function Admin() {
   const [verificationSubTab, setVerificationSubTab] = useState<'pending' | 'approved'>('pending');
   const [rejectingUser, setRejectingUser] = useState<any>(null);
   const [accountRejectionReason, setAccountRejectionReason] = useState('الايدي غير موجود في اللعبة');
+  const [banningUser, setBanningUser] = useState<any>(null);
+  const [banReason, setBanReason] = useState('مخالفة شروط الاستخدام');
+  const [banDays, setBanDays] = useState('30');
   
   // Promo code state
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -1228,8 +1231,10 @@ export default function Admin() {
                 </button>
               ) : (
                 <button 
-                  onClick={async () => {
-                    await runAction({ action: 'ban_user', id: selectedUser.id, days: -1 });
+                  onClick={() => {
+                    setBanningUser(selectedUser);
+                    setBanReason('مخالفة شروط الاستخدام');
+                    setBanDays('30');
                     setSelectedUser(null);
                   }} 
                   className="w-full rounded-xl bg-red-50 border border-red-100 py-2 text-xs font-black text-red-600 transition-all active:scale-95 hover:bg-red-100"
@@ -1282,8 +1287,10 @@ export default function Admin() {
                 </button>
               ) : (
                 <button 
-                  onClick={async () => {
-                    await runAction({ action: 'ban_user', id: selectedUserForActions.id, days: -1 });
+                  onClick={() => {
+                    setBanningUser(selectedUserForActions);
+                    setBanReason('مخالفة شروط الاستخدام');
+                    setBanDays('30');
                     setSelectedUserForActions(null);
                   }} 
                   className="w-full rounded-xl bg-red-50 border border-red-100 py-3 text-xs font-black text-red-600 transition-all active:scale-95 hover:bg-red-100 flex items-center justify-center gap-2"
@@ -1302,6 +1309,70 @@ export default function Admin() {
               >
                 <Trash2 className="h-4 w-4" />
                 <span>حذف المستخدم نهائياً</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Ban User Confirmation Modal with Reason and Duration */}
+      <Modal isOpen={!!banningUser} onClose={() => setBanningUser(null)} title="حظر المستخدم وكتابة السبب" className="max-w-[340px] !p-6">
+        {banningUser && (
+          <div className="space-y-4 pt-2 text-right animate-fade-in" dir="rtl">
+            <p className="text-xs text-gray-500 font-black leading-relaxed">
+              أنت على وشك حظر المستخدم: <span className="text-[#CD1212] font-black">{banningUser.account_name || banningUser.id_account || banningUser.account_id}</span>
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-black text-gray-500 mb-1.5 mr-1">سبب الحظر (سيظهر للمستخدم عند تسجيل الدخول):</label>
+                <input 
+                  type="text"
+                  placeholder="مثال: استخدام أدوات غير قانونية" 
+                  value={banReason} 
+                  onChange={e => setBanReason(e.target.value)} 
+                  className="w-full rounded-xl border border-gray-200 bg-white p-3 text-xs font-black outline-none focus:border-[#CD1212] transition-all" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black text-gray-500 mb-1.5 mr-1">مدة الحظر:</label>
+                <select
+                  value={banDays}
+                  onChange={e => setBanDays(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white p-3 text-xs font-black text-gray-800 outline-none focus:border-[#CD1212] transition-colors"
+                >
+                  <option value="1">يوم واحد (1)</option>
+                  <option value="3">3 أيام</option>
+                  <option value="7">أسبوع (7)</option>
+                  <option value="30">شهر (30)</option>
+                  <option value="90">3 أشهر (90)</option>
+                  <option value="365">سنة كاملة (365)</option>
+                  <option value="1000">حظر دائم (1000 يوم)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button 
+                onClick={async () => {
+                  await runAction({ 
+                    action: 'ban_user', 
+                    id: banningUser.id, 
+                    days: banDays, 
+                    reason: banReason.trim() ? banReason : 'مخالفة شروط الاستخدام' 
+                  });
+                  setBanningUser(null);
+                }} 
+                className="flex-1 rounded-xl bg-red-600 py-3 text-xs font-black text-white transition-all active:scale-95 hover:bg-red-700 shadow-md shadow-red-600/10"
+              >
+                تأكيد الحظر
+              </button>
+              <button 
+                onClick={() => setBanningUser(null)} 
+                className="flex-1 rounded-xl bg-gray-50 border border-gray-100 py-3 text-xs font-black text-gray-600 transition-all active:scale-95 hover:bg-gray-100"
+              >
+                إلغاء
               </button>
             </div>
           </div>

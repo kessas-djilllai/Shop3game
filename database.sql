@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     level_status TEXT DEFAULT 'Pending',
     linking_status TEXT DEFAULT 'Pending',
     account_name TEXT NULL,
+    ban_cause TEXT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -61,4 +62,5 @@ CREATE TABLE IF NOT EXISTS settings (
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS level_status TEXT DEFAULT 'Pending';
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS linking_status TEXT DEFAULT 'Pending';
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS account_name TEXT NULL;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_cause TEXT NULL;
 

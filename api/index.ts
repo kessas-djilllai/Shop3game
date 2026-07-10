@@ -749,7 +749,11 @@ app.post('/api/login', async (req, res) => {
             const banUntil = new Date(user.ban_until);
             if (now < banUntil) {
                 const days = Math.ceil((banUntil.getTime() - now.getTime()) / (1000 * 3600 * 24));
-                return res.status(403).json({ status: 'banned', message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً` });
+                return res.status(403).json({ 
+                    status: 'banned', 
+                    message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً`,
+                    ban_cause: user.ban_cause || ''
+                });
             } else {
                 await supabase.from('users').delete().eq('id', user.id);
                 return res.status(404).json({ message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر' });
@@ -851,7 +855,11 @@ app.get('/api/user/me', async (req, res) => {
             const banUntil = new Date(user.ban_until);
             if (now < banUntil) {
                 const days = Math.ceil((banUntil.getTime() - now.getTime()) / (1000 * 3600 * 24));
-                return res.status(403).json({ status: 'banned', message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً` });
+                return res.status(403).json({ 
+                    status: 'banned', 
+                    message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً`,
+                    ban_cause: user.ban_cause || ''
+                });
             } else {
                 await supabase.from('users').delete().eq('id', user.id);
                 return res.status(404).json({ message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر' });
@@ -983,13 +991,22 @@ app.post('/api/orders', async (req, res) => {
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
         
-        const { data: user } = await supabase.from('users').select('is_banned, ban_until, verification_status, account_name, id_account').eq('id', decoded.id).single();
+        let selectQuery = 'is_banned, ban_until, ban_cause, verification_status, account_name, id_account';
+        let userResult = await supabase.from('users').select(selectQuery).eq('id', decoded.id).single();
+        if (userResult.error && userResult.error.message?.includes('column')) {
+            userResult = await supabase.from('users').select('is_banned, ban_until, verification_status, account_name, id_account').eq('id', decoded.id).single();
+        }
+        const user: any = userResult.data;
         if (user && user.is_banned) {
             const now = new Date();
             const banUntil = new Date(user.ban_until);
             if (now < banUntil) {
                 const days = Math.ceil((banUntil.getTime() - now.getTime()) / (1000 * 3600 * 24));
-                return res.status(403).json({ status: 'banned', message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً` });
+                return res.status(403).json({ 
+                    status: 'banned', 
+                    message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً`,
+                    ban_cause: (user as any).ban_cause || ''
+                });
             }
         }
 
@@ -1148,7 +1165,7 @@ app.get('/api/admin/data', async (req, res) => {
         try {
             const { data, error: usersError } = await supabase
                 .from('users')
-                .select('id, id_account, password, level, is_banned, ban_until, account_name, verification_status, temp_email, temp_password')
+                .select('id, id_account, password, level, is_banned, ban_until, ban_cause, account_name, verification_status, temp_email, temp_password')
                 .order('level', { ascending: false });
             if (usersError) throw usersError;
             users = data || [];
@@ -1261,10 +1278,19 @@ app.post('/api/admin/verify-account', async (req, res) => {
         if (is_banned) {
             const banUntil = new Date();
             banUntil.setDate(banUntil.getDate() + parseInt(ban_days || '-1'));
-            await supabase.from('users').update({
+            const updateData: any = {
                 is_banned: true,
-                ban_until: banUntil.toISOString()
-            }).eq('id', id);
+                ban_until: banUntil.toISOString(),
+                ban_cause: req.body.ban_cause || ''
+            };
+            const { error: banError } = await supabase.from('users').update(updateData).eq('id', id);
+            if (banError && banError.message?.includes('column')) {
+                console.log("ban_cause column doesn't exist yet, falling back to update without ban_cause column");
+                await supabase.from('users').update({
+                    is_banned: true,
+                    ban_until: banUntil.toISOString()
+                }).eq('id', id);
+            }
         }
 
         res.json({ status: 'success' });
@@ -1299,7 +1325,19 @@ app.post('/api/admin/action', async (req, res) => {
         } else if (action === 'ban_user') {
             const banUntil = new Date();
             banUntil.setDate(banUntil.getDate() + parseInt(days));
-            await supabase.from('users').update({ is_banned: true, ban_until: banUntil.toISOString() }).eq('id', id);
+            const updateData: any = {
+                is_banned: true,
+                ban_until: banUntil.toISOString(),
+                ban_cause: reason || ''
+            };
+            const { error: banError } = await supabase.from('users').update(updateData).eq('id', id);
+            if (banError && banError.message?.includes('column')) {
+                console.log("ban_cause column doesn't exist yet, falling back to update without ban_cause column");
+                await supabase.from('users').update({
+                    is_banned: true,
+                    ban_until: banUntil.toISOString()
+                }).eq('id', id);
+            }
         } else if (action === 'unban_user') {
             await supabase.from('users').update({ is_banned: false, ban_until: null }).eq('id', id);
         } else if (action === 'regenerate_temp_email') {
