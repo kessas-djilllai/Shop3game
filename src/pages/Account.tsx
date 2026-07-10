@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Calendar, Shield, Link, CheckCircle, XCircle, Clock, Check, Award, ShieldCheck, AlertCircle, Trophy, Heart, Globe, Users, Quote, Flame, Flag } from 'lucide-react';
+import { User, LogOut, Calendar, Shield, Link, CheckCircle, XCircle, Clock, Check, Award, ShieldCheck, AlertCircle, Trophy, Heart, Globe, Users, Quote, Flag } from 'lucide-react';
 import axios from 'axios';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -332,44 +332,31 @@ export default function Account() {
                 </div>
 
                 {/* Guild / Association (الرابطة) */}
-                <div className="flex flex-col justify-between p-5 bg-gradient-to-br from-amber-900/[0.04] to-white rounded-[26px] border border-amber-900/10 shadow-[0_4px_12px_rgba(120,53,4,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
-                  <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-amber-900/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="flex items-center gap-2.5 mb-3 relative z-10">
-                    <div className="h-8.5 w-8.5 rounded-xl bg-amber-100 flex items-center justify-center">
-                      <Flag className="h-4.5 w-4.5 text-amber-800" />
+                <div className="col-span-2 flex items-center justify-between p-5 bg-gradient-to-br from-amber-900/[0.04] to-white rounded-[26px] border border-amber-900/10 shadow-[0_4px_12px_rgba(120,53,4,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-amber-900/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="flex items-center gap-3.5 z-10">
+                    <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <Flag className="h-5 w-5 text-amber-800" />
                     </div>
-                    <span className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wider">{language === 'ar' ? 'الرابطة' : 'Guild'}</span>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wider">{language === 'ar' ? 'الرابطة' : 'Guild'}</span>
+                      {isFetchingUser ? (
+                        <span className="h-5 w-16 animate-pulse bg-amber-100 rounded-md mt-0.5 block"></span>
+                      ) : (
+                        <div className="flex flex-col mt-0.5">
+                          <span className="text-base font-black text-amber-950">
+                            {user?.clane || (language === 'ar' ? 'لا توجد رابطة' : 'No Guild')}
+                          </span>
+                          {user?.lvl_clane ? (
+                            <span className="text-[10px] font-extrabold text-amber-700 mt-0.5">
+                              {language === 'ar' ? 'مستوى الرابطة ' : 'Guild Level '}{user.lvl_clane}
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {isFetchingUser ? (
-                    <span className="h-7 w-12 animate-pulse bg-amber-100 rounded-lg block"></span>
-                  ) : (
-                    <div className="flex flex-col relative z-10">
-                      <span className="text-base font-black text-amber-950 line-clamp-1">
-                        {user?.clane || (language === 'ar' ? 'لا توجد رابطة' : 'No Guild')}
-                      </span>
-                      {user?.lvl_clane ? (
-                        <span className="text-[10px] font-extrabold text-amber-700 mt-0.5">
-                          {language === 'ar' ? 'مستوى الرابطة ' : 'Guild Level '}{user.lvl_clane}
-                        </span>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-
-                {/* Badges (شارات الفاير باس) */}
-                <div className="flex flex-col justify-between p-5 bg-gradient-to-br from-amber-50/70 to-white rounded-[26px] border border-amber-100/70 shadow-[0_4px_12px_rgba(245,158,11,0.02)] hover:shadow-md transition-all duration-300 relative overflow-hidden group">
-                  <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-amber-500/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="flex items-center gap-2.5 mb-3 relative z-10">
-                    <div className="h-8.5 w-8.5 rounded-xl bg-amber-100 flex items-center justify-center">
-                      <Flame className="h-4.5 w-4.5 text-amber-500 animate-pulse" />
-                    </div>
-                    <span className="text-[11px] font-extrabold text-amber-500 uppercase tracking-wider">{language === 'ar' ? 'شارات الفاير باس' : 'Fire Pass Badges'}</span>
-                  </div>
-                  {isFetchingUser ? (
-                    <span className="h-7 w-12 animate-pulse bg-amber-100 rounded-lg block"></span>
-                  ) : (
-                    <span className="text-2xl font-black text-amber-800 relative z-10">{user?.elite_pass || 0}</span>
-                  )}
+                  <Flag className="absolute right-[-10px] bottom-[-20px] h-24 w-24 text-amber-800 opacity-[0.06] z-0" />
                 </div>
 
 

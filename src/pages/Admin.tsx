@@ -59,6 +59,7 @@ export default function Admin() {
   
   // Video upload state
   const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadStatus, setVideoUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [videoKey, setVideoKey] = useState(Date.now());
   const [videoUrl, setVideoUrl] = useState('/public/explain.mp4');
@@ -173,6 +174,7 @@ export default function Admin() {
     }
 
     setIsVideoUploading(true);
+    setVideoUploadProgress(0);
     setVideoUploadStatus('idle');
 
     try {
@@ -186,7 +188,13 @@ export default function Admin() {
           videoData: base64Data,
           fileName: file.name
         }, {
-          headers: { Authorization: `Bearer ${adminToken}` }
+          headers: { Authorization: `Bearer ${adminToken}` },
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setVideoUploadProgress(percentCompleted);
+            }
+          }
         });
 
         if (res.data.success) {
@@ -1313,12 +1321,20 @@ export default function Admin() {
                 <label className="block text-xs font-black text-gray-500 mb-2 mr-1">رفع فيديو جديد من الجهاز (صيغة MP4):</label>
                 <div className="flex items-center justify-center w-full">
                   <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-gray-100/50 hover:border-red-300 transition-all">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6 w-full">
                       <Upload className="h-8 w-8 text-gray-400 mb-2" />
                       <p className="text-xs font-bold text-gray-500 text-center px-4">
-                        {isVideoUploading ? 'جاري الرفع والتحميل...' : 'اضغط لاختيار فيديو MP4 من جهازك'}
+                        {isVideoUploading ? `جاري الرفع والتحميل... (${videoUploadProgress}%)` : 'اضغط لاختيار فيديو MP4 من جهازك'}
                       </p>
-                      <p className="text-[10px] text-gray-400 font-bold mt-1 font-mono">يتم الحفظ في Supabase Storage السحابي تلقائياً</p>
+                      {isVideoUploading && (
+                        <div className="w-4/5 max-w-[250px] bg-gray-200 rounded-full h-2.5 mt-3 overflow-hidden">
+                          <div 
+                            className="bg-[#CD1212] h-full rounded-full transition-all duration-300" 
+                            style={{ width: `${videoUploadProgress}%` }}
+                          ></div>
+                        </div>
+                      )}
+                      <p className="text-[10px] text-gray-400 font-bold mt-2 font-mono">يتم الحفظ في Supabase Storage السحابي تلقائياً</p>
                     </div>
                     <input 
                       type="file" 

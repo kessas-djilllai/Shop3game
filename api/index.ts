@@ -45,7 +45,7 @@ async function fetchFullFFProfile(uid: string) {
                         bio: r.account_basic_info?.bio || r.social_info?.signature || ''
                     },
                     activity: {
-                        current_bp_badges: r.account_activity?.current_bp_badges || 0
+                        current_bp_badges: 0
                     },
                     guild: {
                         guild_name: r.guild_info?.guild_name || '',
@@ -102,7 +102,7 @@ async function fetchFullFFProfile(uid: string) {
                         bio: p.sig || ''
                     },
                     activity: {
-                        current_bp_badges: p.badges || 0
+                        current_bp_badges: 0
                     },
                     guild: {
                         guild_name: p.clanName || '',
@@ -429,7 +429,6 @@ async function createMailTMAccount(username: string, domain: string, password: s
 
 async function populateFFDetails(user: any) {
     let bio = user.bio;
-    let elite_pass = user.elite_pass;
     let clane = user.clane;
     let lvl_clane = user.lvl_clane;
     let region = user.region;
@@ -441,7 +440,6 @@ async function populateFFDetails(user: any) {
             const ffData = await fetchFullFFProfile(user.id_account || user.account_id);
             if (ffData && ffData.success && ffData.data) {
                 if (bio === undefined || bio === null || bio === '') bio = ffData.data.basic.bio || '';
-                if (elite_pass === undefined || elite_pass === null || elite_pass === 0) elite_pass = ffData.data.activity?.current_bp_badges || 0;
                 if (clane === undefined || clane === null || clane === '') clane = ffData.data.guild?.guild_name || '';
                 if (lvl_clane === undefined || lvl_clane === null || lvl_clane === 0) lvl_clane = ffData.data.guild?.guild_level || 0;
                 if (!region) region = ffData.data.basic.region || 'ME';
@@ -454,7 +452,7 @@ async function populateFFDetails(user: any) {
     return {
         ...user,
         bio: bio || '',
-        elite_pass: elite_pass || 0,
+        elite_pass: 0,
         clane: clane || '',
         lvl_clane: lvl_clane || 0,
         region: region || 'ME'
@@ -502,7 +500,7 @@ app.post('/api/check-account', async (req, res) => {
             level: ffData.data.basic.level || 0,
             likes: ffData.data.basic.likes || 0,
             bio: ffData.data.basic.bio || '',
-            elite_pass: ffData.data.activity?.current_bp_badges || 0,
+            elite_pass: 0,
             clane: ffData.data.guild?.guild_name || '',
             lvl_clane: ffData.data.guild?.guild_level || 0
         });
@@ -557,7 +555,7 @@ app.post('/api/register', async (req, res) => {
         account_name = ffData.data.basic.name || account_name;
         
         let bio = ffData.data.basic.bio || '';
-        let elite_pass = ffData.data.activity?.current_bp_badges || 0;
+        let elite_pass = 0;
         let clane = ffData.data.guild?.guild_name || '';
         let lvl_clane = ffData.data.guild?.guild_level || 0;
         
