@@ -182,38 +182,45 @@ export default function Admin() {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = async () => {
-        const base64Data = (reader.result as string).split(',')[1];
-        const adminToken = localStorage.getItem('ff_admin_token');
-        
-        const res = await axios.post('/api/admin/upload-video', {
-          videoData: base64Data,
-          fileName: file.name
-        }, {
-          headers: { Authorization: `Bearer ${adminToken}` },
-          onUploadProgress: (progressEvent) => {
-            if (progressEvent.total) {
-              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-              setVideoUploadProgress(percentCompleted);
+        try {
+          const base64Data = (reader.result as string).split(',')[1];
+          const adminToken = localStorage.getItem('ff_admin_token');
+          
+          const res = await axios.post('/api/admin/upload-video', {
+            videoData: base64Data,
+            fileName: file.name
+          }, {
+            headers: { Authorization: `Bearer ${adminToken}` },
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                setVideoUploadProgress(percentCompleted);
+              }
             }
-          }
-        });
+          });
 
-        if (res.data.success) {
-          setVideoUploadStatus('success');
-          setVideoUrl(res.data.url);
-          setVideoUrlInput(res.data.url);
-          setVideoKey(Date.now());
-          alert('تم رفع الفيديو بنجاح!');
-        } else {
+          if (res.data.success) {
+            setVideoUploadStatus('success');
+            setVideoUrl(res.data.url);
+            setVideoUrlInput(res.data.url);
+            setVideoKey(Date.now());
+            alert('تم رفع الفيديو بنجاح!');
+          } else {
+            setVideoUploadStatus('error');
+            alert('فشل رفع الفيديو');
+          }
+        } catch (uploadErr: any) {
+          console.error(uploadErr);
           setVideoUploadStatus('error');
-          alert('فشل رفع الفيديو');
+          alert(uploadErr.response?.data?.message || 'حدث خطأ أثناء رفع الفيديو إلى الخادم. يرجى التحقق من إعدادات Supabase وحجم الملف.');
+        } finally {
+          setIsVideoUploading(false);
         }
-        setIsVideoUploading(false);
       };
     } catch (err) {
       console.error(err);
       setVideoUploadStatus('error');
-      alert('حدث خطأ في رفع الفيديو');
+      alert('حدث خطأ في قراءة ملف الفيديو');
       setIsVideoUploading(false);
     }
   };

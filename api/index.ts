@@ -1528,8 +1528,9 @@ app.post('/api/admin/upload-video', async (req, res) => {
         const safeName = 'explain.mp4';
         const buffer = Buffer.from(videoData, 'base64');
         
-        let finalUrl = `/public/${safeName}`;
+        let finalUrl = '';
         let storageSuccess = false;
+        let lastUploadErrorMsg = '';
 
         // Try to upload to Supabase Storage if configured
         if (supabaseUrl && supabaseKey) {
@@ -1547,10 +1548,11 @@ app.post('/api/admin/upload-video', async (req, res) => {
                     storageSuccess = true;
                     console.log("Uploaded video successfully to Supabase Storage:", finalUrl);
                 } else {
+                    lastUploadErrorMsg = uploadError.message;
                     console.warn("Direct upload failed, attempting to ensure bucket exists and retry:", uploadError.message);
                     try {
                         await supabase.storage.createBucket('videos', { public: true });
-                    } catch (bucketErr) {
+                    } catch (bucketErr: any) {
                         console.warn("Failed or skipped bucket creation:", bucketErr);
                     }
                     // Retry upload
@@ -1566,24 +1568,36 @@ app.post('/api/admin/upload-video', async (req, res) => {
                         storageSuccess = true;
                         console.log("Uploaded video successfully to Supabase Storage after bucket creation:", finalUrl);
                     } else {
-                        console.warn("Fell back because retry upload also failed:", retryError.message);
+                        lastUploadErrorMsg = retryError.message;
+                        console.warn("Retry upload also failed:", retryError.message);
                     }
                 }
             } catch (storageErr: any) {
-                console.warn("Supabase Storage error (will write local fallback):", storageErr.message);
+                lastUploadErrorMsg = storageErr.message;
+                console.warn("Supabase Storage error:", storageErr.message);
             }
         }
 
-        // Try local filesystem fallback
-        try {
-            const publicDir = path.join(process.cwd(), 'public');
-            if (!fs.existsSync(publicDir)) {
-                fs.mkdirSync(publicDir, { recursive: true });
+        // If Supabase is configured but we failed to upload, return a clear error instead of falling back to disk
+        if (supabaseUrl && supabaseKey && !storageSuccess) {
+            return res.status(400).json({ 
+                message: `فشل الرفع إلى Supabase Storage: ${lastUploadErrorMsg || 'حدث خطأ غير معروف'}. يرجى تطبيق كود SQL في لوحة تحكم Supabase لتصريح عمليات الرفع وإتاحة الوصول العام.`
+            });
+        }
+
+        // Fallback to local files only if Supabase is NOT configured at all
+        if (!storageSuccess) {
+            finalUrl = `/public/${safeName}`;
+            try {
+                const publicDir = path.join(process.cwd(), 'public');
+                if (!fs.existsSync(publicDir)) {
+                    fs.mkdirSync(publicDir, { recursive: true });
+                }
+                fs.writeFileSync(path.join(publicDir, safeName), buffer);
+                console.log("Wrote file to local public/ folder.");
+            } catch (localErr: any) {
+                console.warn("Local filesystem write failed:", localErr.message);
             }
-            fs.writeFileSync(path.join(publicDir, safeName), buffer);
-            console.log("Wrote file to local public/ folder.");
-        } catch (localErr: any) {
-            console.warn("Local filesystem write failed (expected on Vercel):", localErr.message);
         }
 
         // Save URL in settings
