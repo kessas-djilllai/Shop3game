@@ -178,50 +178,114 @@ export default function Admin() {
     setVideoUploadProgress(0);
     setVideoUploadStatus('idle');
 
+    let supConfig: { supabaseUrl?: string; supabaseKey?: string } = {};
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        try {
-          const base64Data = (reader.result as string).split(',')[1];
-          const adminToken = localStorage.getItem('ff_admin_token');
-          
-          const res = await axios.post('/api/admin/upload-video', {
-            videoData: base64Data,
-            fileName: file.name
-          }, {
-            headers: { Authorization: `Bearer ${adminToken}` },
+      const adminToken = localStorage.getItem('ff_admin_token');
+      
+      // 1. Fetch Supabase Configuration
+      try {
+        const configRes = await axios.get('/api/admin/supabase-config', {
+          headers: { Authorization: `Bearer ${adminToken}` }
+        });
+        supConfig = configRes.data;
+      } catch (configErr) {
+        console.warn("Failed to get Supabase config from server, falling back to FileReader upload:", configErr);
+      }
+
+      const { supabaseUrl, supabaseKey } = supConfig;
+
+      // 2. If Supabase config is retrieved, upload DIRECTLY from client-side (bypasses 4.5MB server limit entirely)
+      if (supabaseUrl && supabaseKey) {
+        const safeName = 'explain.mp4';
+        const uploadUrl = `${supabaseUrl}/storage/v1/object/videos/${safeName}`;
+
+        // Direct stream upload via Axios to Supabase Storage endpoint
+        const uploadRes = await axios.post(
+          uploadUrl,
+          file,
+          {
+            headers: {
+              'Authorization': `Bearer ${supabaseKey}`,
+              'apikey': supabaseKey,
+              'Content-Type': file.type || 'video/mp4',
+              'x-upsert': 'true'
+            },
             onUploadProgress: (progressEvent) => {
               if (progressEvent.total) {
                 const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
                 setVideoUploadProgress(percentCompleted);
               }
             }
+          }
+        );
+
+        if (uploadRes.status === 200 || uploadRes.status === 201) {
+          // Construct public access URL with cache-buster
+          const publicUrl = `${supabaseUrl}/storage/v1/object/public/videos/${safeName}?v=${Date.now()}`;
+          
+          // Save link on the server settings
+          await axios.post('/api/admin/video-url', { videoUrl: publicUrl }, {
+            headers: { Authorization: `Bearer ${adminToken}` }
           });
 
-          if (res.data.success) {
-            setVideoUploadStatus('success');
-            setVideoUrl(res.data.url);
-            setVideoUrlInput(res.data.url);
-            setVideoKey(Date.now());
-            alert('تم رفع الفيديو بنجاح!');
-          } else {
-            setVideoUploadStatus('error');
-            alert('فشل رفع الفيديو');
-          }
-        } catch (uploadErr: any) {
-          console.error(uploadErr);
-          setVideoUploadStatus('error');
-          alert(uploadErr.response?.data?.message || 'حدث خطأ أثناء رفع الفيديو إلى الخادم. يرجى التحقق من إعدادات Supabase وحجم الملف.');
-        } finally {
-          setIsVideoUploading(false);
+          setVideoUploadStatus('success');
+          setVideoUrl(publicUrl);
+          setVideoUrlInput(publicUrl);
+          setVideoKey(Date.now());
+          alert('تم رفع الفيديو وحفظه بنجاح!');
+        } else {
+          throw new Error('فشل الرفع المباشر إلى Supabase Storage');
         }
-      };
-    } catch (err) {
-      console.error(err);
+      } else {
+        // 3. Server-side upload fallback (only for small files < 4MB due to serverless payload limits)
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+          try {
+            const base64Data = (reader.result as string).split(',')[1];
+            const adminToken = localStorage.getItem('ff_admin_token');
+            
+            const res = await axios.post('/api/admin/upload-video', {
+              videoData: base64Data,
+              fileName: file.name
+            }, {
+              headers: { Authorization: `Bearer ${adminToken}` },
+              onUploadProgress: (progressEvent) => {
+                if (progressEvent.total) {
+                  const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                  setVideoUploadProgress(percentCompleted);
+                }
+              }
+            });
+
+            if (res.data.success) {
+              setVideoUploadStatus('success');
+              setVideoUrl(res.data.url);
+              setVideoUrlInput(res.data.url);
+              setVideoKey(Date.now());
+              alert('تم رفع الفيديو بنجاح!');
+            } else {
+              setVideoUploadStatus('error');
+              alert('فشل رفع الفيديو');
+            }
+          } catch (uploadErr: any) {
+            console.error(uploadErr);
+            setVideoUploadStatus('error');
+            alert(uploadErr.response?.data?.message || 'حدث خطأ أثناء رفع الفيديو.');
+          } finally {
+            setIsVideoUploading(false);
+          }
+        };
+      }
+    } catch (err: any) {
+      console.error("Direct upload error:", err);
       setVideoUploadStatus('error');
-      alert('حدث خطأ في قراءة ملف الفيديو');
-      setIsVideoUploading(false);
+      const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message;
+      alert(`فشل الرفع المباشر إلى Supabase: ${errorMsg}\n\nيرجى التأكد من وجود مجلد (bucket) باسم "videos" في حساب Supabase الخاص بك، وأن تصريح الرفع والقراءة (Storage RLS Policies) مفعّل للعامة.`);
+    } finally {
+      if (supConfig.supabaseUrl) {
+        setIsVideoUploading(false);
+      }
     }
   };
 

@@ -1454,12 +1454,34 @@ app.get('/api/video-url', async (req, res) => {
             .eq('key', 'video_url')
             .single();
 
-        if (error || !data) {
-            return res.json({ videoUrl: fallbackVideoUrl });
+        let rawUrl = '';
+        if (!error && data) {
+            rawUrl = data.value || '';
+        } else {
+            rawUrl = fallbackVideoUrl;
         }
-        res.json({ videoUrl: data.value || fallbackVideoUrl });
+
+        // Filter out old project-file based default paths
+        const cleanedUrl = (rawUrl === '/public/explain.mp4' || rawUrl === 'public/explain.mp4' || rawUrl === '/public/explain.mp4/' || rawUrl === 'public/explain.mp4/') ? '' : rawUrl;
+        res.json({ videoUrl: cleanedUrl });
     } catch (e) {
-        res.json({ videoUrl: fallbackVideoUrl });
+        res.json({ videoUrl: '' });
+    }
+});
+
+// Admin: Get Supabase configuration for client-side direct video upload (bypasses Vercel body limits)
+app.get('/api/admin/supabase-config', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    try {
+        const decoded: any = jwt.verify(token!, JWT_SECRET);
+        if (!decoded.isAdmin) throw new Error();
+
+        res.json({
+            supabaseUrl,
+            supabaseKey,
+        });
+    } catch (e) {
+        res.status(403).json({ message: 'Unauthorized' });
     }
 });
 
