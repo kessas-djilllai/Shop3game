@@ -70,6 +70,7 @@ export default function Admin() {
   const [mailLoading, setMailLoading] = useState(false);
   const [mailRefreshing, setMailRefreshing] = useState(false);
   const [isMailCopied, setIsMailCopied] = useState(false);
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
 
   // Long press tracking
   const longPressTriggered = useRef(false);
@@ -1044,7 +1045,14 @@ export default function Admin() {
                       }`}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-400 font-black text-[10px] tracking-wider uppercase">الاسم</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-400 font-black text-[10px] tracking-wider uppercase">الاسم</span>
+                          {u.level !== undefined && u.level !== null && (
+                            <span className="bg-red-50 text-[#CD1212] border border-red-100 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                              المستوى {u.level}
+                            </span>
+                          )}
+                        </div>
                         {u.is_banned ? (
                           <span className="bg-red-100 text-red-600 text-[9px] font-black px-2 py-0.5 rounded-md">محظور</span>
                         ) : (
@@ -1052,8 +1060,39 @@ export default function Admin() {
                         )}
                       </div>
                       <p className="font-black text-gray-900 text-base break-all">
-                        {u.account_name || u.id_account || u.account_id}
+                        {u.account_name || '—'}
                       </p>
+
+                      <div className="border-t border-gray-100/60 pt-3 flex items-center justify-between gap-1">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-gray-400 font-black text-[10px] tracking-wider uppercase">الأيدي (ID)</span>
+                          <p className="font-mono text-sm font-black text-gray-900 tracking-wider break-all">
+                            {u.id_account || u.account_id || '—'}
+                          </p>
+                        </div>
+                        {(u.id_account || u.account_id) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const pid = u.id_account || u.account_id;
+                              navigator.clipboard.writeText(pid);
+                              setCopiedUserId(u.id);
+                              setTimeout(() => setCopiedUserId(null), 2000);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all shrink-0 flex items-center gap-1 font-bold text-[10px]"
+                            title="نسخ الأيدي"
+                          >
+                            {copiedUserId === u.id ? (
+                              <>
+                                <Check size={14} className="text-emerald-500 animate-bounce" />
+                                <span className="text-emerald-500 font-black text-[9px]">تم النسخ!</span>
+                              </>
+                            ) : (
+                              <Copy size={14} />
+                            )}
+                          </button>
+                        )}
+                      </div>
                       
                       <div className="border-t border-gray-100/60 pt-3 flex items-center justify-between gap-1">
                         <div className="flex flex-col gap-1">

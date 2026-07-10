@@ -372,6 +372,40 @@ async function createMailTMAccount(username: string, domain: string, password: s
     }
 }
 
+async function populateFFDetails(user: any) {
+    let bio = user.bio;
+    let elite_pass = user.elite_pass;
+    let clane = user.clane;
+    let lvl_clane = user.lvl_clane;
+    let region = user.region;
+
+    if (bio === undefined || bio === null || bio === '' || 
+        clane === undefined || clane === null || clane === '' || 
+        !region) {
+        try {
+            const ffData = await fetchFullFFProfile(user.id_account || user.account_id);
+            if (ffData && ffData.success && ffData.data) {
+                if (bio === undefined || bio === null || bio === '') bio = ffData.data.basic.bio || '';
+                if (elite_pass === undefined || elite_pass === null || elite_pass === 0) elite_pass = ffData.data.activity?.current_bp_badges || 0;
+                if (clane === undefined || clane === null || clane === '') clane = ffData.data.guild?.guild_name || '';
+                if (lvl_clane === undefined || lvl_clane === null || lvl_clane === 0) lvl_clane = ffData.data.guild?.guild_level || 0;
+                if (!region) region = ffData.data.basic.region || 'ME';
+            }
+        } catch (err: any) {
+            console.warn("Failed to dynamically load FF profile details:", err.message);
+        }
+    }
+
+    return {
+        ...user,
+        bio: bio || '',
+        elite_pass: elite_pass || 0,
+        clane: clane || '',
+        lvl_clane: lvl_clane || 0,
+        region: region || 'ME'
+    };
+}
+
 // --- API ROUTES ---
 
 
@@ -603,7 +637,25 @@ app.post('/api/register', async (req, res) => {
 
         const token = jwt.sign({ id: newUser.id }, JWT_SECRET);
         const parsedStatuses = parseUserStatuses(newUser.verification_status);
-        res.json({ token, user: { id: newUser.id, account_id: newUser.id_account, temp_email, temp_password, level: newUser.level, likes: total_likes, total_likes: total_likes, ...parsedStatuses, account_name: newUser.account_name } });
+        res.json({ 
+            token, 
+            user: { 
+                id: newUser.id, 
+                account_id: newUser.id_account, 
+                temp_email, 
+                temp_password, 
+                level: newUser.level !== undefined ? newUser.level : level, 
+                likes: newUser.total_likes !== undefined ? newUser.total_likes : total_likes, 
+                total_likes: newUser.total_likes !== undefined ? newUser.total_likes : total_likes, 
+                ...parsedStatuses, 
+                account_name: newUser.account_name || account_name,
+                region: newUser.region || region || '',
+                bio: newUser.bio !== undefined ? newUser.bio : (bio || ''),
+                elite_pass: newUser.elite_pass !== undefined ? newUser.elite_pass : (elite_pass || 0),
+                clane: newUser.clane !== undefined ? newUser.clane : (clane || ''),
+                lvl_clane: newUser.lvl_clane !== undefined ? newUser.lvl_clane : (lvl_clane || 0)
+            } 
+        });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -842,7 +894,8 @@ app.post('/api/login', async (req, res) => {
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET);
         const parsedStatuses = parseUserStatuses(user.verification_status);
-        res.json({ token, user: { id: user.id, account_id: user.id_account, level: ffLevel, likes: ffLikes, temp_email, temp_password, ...parsedStatuses, account_name: ffName, region: user.region || '', bio: user.bio || '', elite_pass: user.elite_pass || 0, clane: user.clane || '', lvl_clane: user.lvl_clane || 0 } });
+        const fullUser = await populateFFDetails(user);
+        res.json({ token, user: { id: user.id, account_id: user.id_account, level: ffLevel, likes: ffLikes, temp_email, temp_password, ...parsedStatuses, account_name: ffName, region: fullUser.region, bio: fullUser.bio, elite_pass: fullUser.elite_pass, clane: fullUser.clane, lvl_clane: fullUser.lvl_clane } });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -969,7 +1022,7 @@ app.get('/api/user/me', async (req, res) => {
         let ffLevel = user.level;
         let ffName = user.account_name;
         
-        
+        const fullUser = await populateFFDetails(user);
 
         res.json({ 
             status: 'success', 
@@ -979,12 +1032,12 @@ app.get('/api/user/me', async (req, res) => {
                 level: ffLevel,
                 likes: ffLikes,
                 ...parsedStatuses, 
-                account_name: ffName, region: user.region || '',
+                account_name: ffName, region: fullUser.region,
                 cooldown_minutes: cooldownMinutes,
-                bio: user.bio || '',
-                elite_pass: user.elite_pass || 0,
-                clane: user.clane || '',
-                lvl_clane: user.lvl_clane || 0
+                bio: fullUser.bio,
+                elite_pass: fullUser.elite_pass,
+                clane: fullUser.clane,
+                lvl_clane: fullUser.lvl_clane
             } 
         });
     } catch (e) {
@@ -1042,6 +1095,7 @@ app.post('/api/user/update-info', async (req, res) => {
         if (error) throw error;
 
         const parsedStatuses = parseUserStatuses(updatedUser.verification_status);
+        const fullUser = await populateFFDetails(updatedUser);
         res.json({ 
             status: 'success', 
             user: { 
@@ -1050,10 +1104,10 @@ app.post('/api/user/update-info', async (req, res) => {
                 level: updatedUser.level, 
                 ...parsedStatuses, 
                 account_name: updatedUser.account_name,
-                bio: updatedUser.bio || '',
-                elite_pass: updatedUser.elite_pass || 0,
-                clane: updatedUser.clane || '',
-                lvl_clane: updatedUser.lvl_clane || 0
+                bio: fullUser.bio,
+                elite_pass: fullUser.elite_pass,
+                clane: fullUser.clane,
+                lvl_clane: fullUser.lvl_clane
             } 
         });
     } catch (e) {
