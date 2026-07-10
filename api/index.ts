@@ -1712,7 +1712,7 @@ app.get('/api/search-player', async (req, res) => {
 
 // Proxy mail.tm requests to bypass Cloudflare/CORS browser iframe blocks
 app.all('/api/mailtm/*', async (req, res) => {
-    const subPath = req.params[0] || req.originalUrl.split('/api/mailtm/')[1]?.split('?')[0] || '';
+    const subPath = req.path.replace(/^\/api\/mailtm\//, '');
     const queryStr = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
     const targetUrl = `https://api.mail.tm/${subPath}${queryStr}`;
     

@@ -6,6 +6,28 @@ import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
 import DOMPurify from 'dompurify';
 
+const mailtmAxios = async (config: any) => {
+  const isMailtm = config.url && config.url.startsWith('/api/mailtm');
+  try {
+    return await axios(config);
+  } catch (err: any) {
+    if (isMailtm) {
+      console.warn(`Local proxy failed for ${config.url}, trying direct connection to api.mail.tm as fallback...`, err.message);
+      const directUrl = config.url.replace('/api/mailtm', 'https://api.mail.tm');
+      const directConfig = {
+        ...config,
+        url: directUrl,
+      };
+      return await axios(directConfig);
+    }
+    throw err;
+  }
+};
+
+const mailtmGet = (url: string, config?: any) => mailtmAxios({ ...config, url, method: 'get' });
+const mailtmPost = (url: string, data?: any, config?: any) => mailtmAxios({ ...config, url, data, method: 'post' });
+const mailtmPatch = (url: string, data?: any, config?: any) => mailtmAxios({ ...config, url, data, method: 'patch' });
+
 export default function Admin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [username, setUsername] = useState('');
@@ -164,7 +186,7 @@ export default function Admin() {
     setMailToken('');
     
     try {
-      const tokenRes = await axios.post('/api/mailtm/token', {
+      const tokenRes = await mailtmPost('/api/mailtm/token', {
         address: user.temp_email,
         password: user.temp_password
       });
@@ -191,7 +213,7 @@ export default function Admin() {
               const newPassword = regenRes.data.temp_password;
               
               // Try logging in with the newly created credentials!
-              const retryTokenRes = await axios.post('/api/mailtm/token', {
+              const retryTokenRes = await mailtmPost('/api/mailtm/token', {
                 address: newEmail,
                 password: newPassword
               });
@@ -242,7 +264,7 @@ export default function Admin() {
   const fetchUserMessages = async (tkn: string) => {
     setMailRefreshing(true);
     try {
-      const res = await axios.get('/api/mailtm/messages', {
+      const res = await mailtmGet('/api/mailtm/messages', {
         headers: { Authorization: `Bearer ${tkn}` }
       });
       const allMsgs = res.data['hydra:member'] || [];
@@ -262,7 +284,7 @@ export default function Admin() {
       if (!isSeen) {
         setMailMessages(msgs => msgs.map(m => m.id === id ? { ...m, seen: true } : m));
         if (mailToken) {
-          axios.patch(`/api/mailtm/messages/${id}`, { seen: true }, {
+          mailtmPatch(`/api/mailtm/messages/${id}`, { seen: true }, {
             headers: { 
               Authorization: `Bearer ${mailToken}`,
               'Content-Type': 'application/merge-patch+json'
@@ -272,7 +294,7 @@ export default function Admin() {
       }
       
       if (mailToken && !id.startsWith('sim_')) {
-        const res = await axios.get(`/api/mailtm/messages/${id}`, {
+        const res = await mailtmGet(`/api/mailtm/messages/${id}`, {
           headers: { Authorization: `Bearer ${mailToken}` }
         });
         setMailMessageContent(res.data);

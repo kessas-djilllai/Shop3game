@@ -6,6 +6,27 @@ import LoaderButton from '../components/LoaderButton';
 import Modal from '../components/Modal';
 import { useLanguage } from '../context/LanguageContext';
 
+const mailtmAxios = async (config: any) => {
+  const isMailtm = config.url && config.url.startsWith('/api/mailtm');
+  try {
+    return await axios(config);
+  } catch (err: any) {
+    if (isMailtm) {
+      console.warn(`Local proxy failed for ${config.url}, trying direct connection to api.mail.tm as fallback...`, err.message);
+      const directUrl = config.url.replace('/api/mailtm', 'https://api.mail.tm');
+      const directConfig = {
+        ...config,
+        url: directUrl,
+      };
+      return await axios(directConfig);
+    }
+    throw err;
+  }
+};
+
+const mailtmGet = (url: string, config?: any) => mailtmAxios({ ...config, url, method: 'get' });
+const mailtmPost = (url: string, data?: any, config?: any) => mailtmAxios({ ...config, url, data, method: 'post' });
+
 export default function LoginRegister() {
   const { t, language } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
@@ -107,16 +128,16 @@ export default function LoginRegister() {
              let createSuccess = false;
              
              try {
-                await axios.post('/api/mailtm/accounts', { address: email, password: tempPassword });
+                await mailtmPost('/api/mailtm/accounts', { address: email, password: tempPassword });
                 createSuccess = true;
              } catch(e: any) {
                 // fallback
                 try {
-                   const domainsRes = await axios.get('/api/mailtm/domains');
+                   const domainsRes = await mailtmGet('/api/mailtm/domains');
                    if (domainsRes.data['hydra:member']?.length > 0) {
                       const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
                       email = `${cleanUsername}@${fallbackDomain}`;
-                      await axios.post('/api/mailtm/accounts', { address: email, password: tempPassword });
+                      await mailtmPost('/api/mailtm/accounts', { address: email, password: tempPassword });
                       createSuccess = true;
                    }
                 } catch (fallbackErr) {

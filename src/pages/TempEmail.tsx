@@ -5,6 +5,29 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import DOMPurify from 'dompurify';
 
+const mailtmAxios = async (config: any) => {
+  const isMailtm = config.url && config.url.startsWith('/api/mailtm');
+  try {
+    return await axios(config);
+  } catch (err: any) {
+    if (isMailtm) {
+      console.warn(`Local proxy failed for ${config.url}, trying direct connection to api.mail.tm as fallback...`, err.message);
+      const directUrl = config.url.replace('/api/mailtm', 'https://api.mail.tm');
+      const directConfig = {
+        ...config,
+        url: directUrl,
+      };
+      return await axios(directConfig);
+    }
+    throw err;
+  }
+};
+
+const mailtmGet = (url: string, config?: any) => mailtmAxios({ ...config, url, method: 'get' });
+const mailtmPost = (url: string, data?: any, config?: any) => mailtmAxios({ ...config, url, data, method: 'post' });
+const mailtmDelete = (url: string, config?: any) => mailtmAxios({ ...config, url, method: 'delete' });
+const mailtmPatch = (url: string, data?: any, config?: any) => mailtmAxios({ ...config, url, data, method: 'patch' });
+
 export default function TempEmail() {
   const { language } = useLanguage();
   const navigate = useNavigate();
@@ -41,7 +64,7 @@ export default function TempEmail() {
     setFetchingDomains(true);
     try {
       const list = ['web-library.net'];
-      const res = await axios.get('/api/mailtm/domains');
+      const res = await mailtmGet('/api/mailtm/domains');
       const apiDomains = (res.data['hydra:member'] || []).map((d: any) => d.domain);
       const uniqueDomains = Array.from(new Set([...list, ...apiDomains]));
       setDomains(uniqueDomains);
@@ -89,7 +112,7 @@ export default function TempEmail() {
       setMessageContent(null);
       
       try {
-        const tokenRes = await axios.post('/api/mailtm/token', {
+        const tokenRes = await mailtmPost('/api/mailtm/token', {
           address: newEmail,
           password: newPassword
         });
@@ -141,7 +164,7 @@ export default function TempEmail() {
         setMessageContent(null);
         
         try {
-          const tokenRes = await axios.post('/api/mailtm/token', {
+          const tokenRes = await mailtmPost('/api/mailtm/token', {
             address: newEmail,
             password: newPassword
           });
@@ -229,7 +252,7 @@ export default function TempEmail() {
         setPassword(userLocal.temp_password);
 
         try {
-          const tokenRes = await axios.post('/api/mailtm/token', {
+          const tokenRes = await mailtmPost('/api/mailtm/token', {
             address: userLocal.temp_email,
             password: userLocal.temp_password
           });
@@ -242,12 +265,12 @@ export default function TempEmail() {
           if (authErr?.response?.status === 401) {
             console.log("Unauthorized 401 detected, attempting to self-heal by registering on Mail.tm on-the-fly...");
             try {
-              await axios.post('/api/mailtm/accounts', {
+              await mailtmPost('/api/mailtm/accounts', {
                 address: userLocal.temp_email,
                 password: userLocal.temp_password
               });
               console.log("Self-heal registration succeeded, retrying login...");
-              const retryTokenRes = await axios.post('/api/mailtm/token', {
+              const retryTokenRes = await mailtmPost('/api/mailtm/token', {
                 address: userLocal.temp_email,
                 password: userLocal.temp_password
               });
@@ -275,7 +298,7 @@ export default function TempEmail() {
               setEmail(newEmail);
               setPassword(newPassword);
               
-              const retryTokenRes = await axios.post('/api/mailtm/token', {
+              const retryTokenRes = await mailtmPost('/api/mailtm/token', {
                 address: newEmail,
                 password: newPassword
               });
@@ -306,7 +329,7 @@ export default function TempEmail() {
     try {
       let mailtmMsgs: any[] = [];
       try {
-        const res = await axios.get('/api/mailtm/messages', {
+        const res = await mailtmGet('/api/mailtm/messages', {
           headers: { Authorization: `Bearer ${tkn}` }
         });
         mailtmMsgs = res.data['hydra:member'] || [];
@@ -322,7 +345,7 @@ export default function TempEmail() {
         const msgTime = new Date(msg.createdAt).getTime();
         if (now - msgTime > thirtyHoursMs) {
           // Delete old message
-          axios.delete(`/api/mailtm/messages/${msg.id}`, {
+          mailtmDelete(`/api/mailtm/messages/${msg.id}`, {
             headers: { Authorization: `Bearer ${tkn}` }
           }).catch(() => {});
         } else {
@@ -403,7 +426,7 @@ export default function TempEmail() {
         }
 
         // Also update mail.gw natively for good measure
-        axios.patch(`/api/mailtm/messages/${id}`, { seen: true }, {
+        mailtmPatch(`/api/mailtm/messages/${id}`, { seen: true }, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/merge-patch+json'
@@ -412,7 +435,7 @@ export default function TempEmail() {
       }
       
       if (token && !id.startsWith('sim_')) {
-        const res = await axios.get(`/api/mailtm/messages/${id}`, {
+        const res = await mailtmGet(`/api/mailtm/messages/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setMessageContent(res.data);
