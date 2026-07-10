@@ -1425,6 +1425,7 @@ app.get('/api/admin/data', async (req, res) => {
 
 // Promo Code state (fallback if DB fails)
 let fallbackPromoCode = 'FFGEMSMENA2026';
+let fallbackVideoUrl = '';
 
 // Settings: Get Promo Code
 app.get('/api/promo-code', async (req, res) => {
@@ -1454,11 +1455,11 @@ app.get('/api/video-url', async (req, res) => {
             .single();
 
         if (error || !data) {
-            return res.json({ videoUrl: '/public/explain.mp4' });
+            return res.json({ videoUrl: fallbackVideoUrl });
         }
-        res.json({ videoUrl: data.value });
+        res.json({ videoUrl: data.value || fallbackVideoUrl });
     } catch (e) {
-        res.json({ videoUrl: '/public/explain.mp4' });
+        res.json({ videoUrl: fallbackVideoUrl });
     }
 });
 
@@ -1474,9 +1475,11 @@ app.post('/api/admin/video-url', async (req, res) => {
             return res.status(400).json({ message: 'No video URL provided' });
         }
 
-        await supabase
+        const { error } = await supabase
             .from('settings')
             .upsert([{ key: 'video_url', value: videoUrl }]);
+
+        fallbackVideoUrl = videoUrl;
 
         res.json({ status: 'success', videoUrl });
     } catch (e) {
@@ -1531,16 +1534,7 @@ app.post('/api/admin/upload-video', async (req, res) => {
         // Try to upload to Supabase Storage if configured
         if (supabaseUrl && supabaseKey) {
             try {
-                // Ensure bucket exists
-                const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-                if (!listError) {
-                    const bucketExists = buckets?.some(b => b.name === 'videos');
-                    if (!bucketExists) {
-                        await supabase.storage.createBucket('videos', { public: true });
-                    }
-                }
-
-                // Upload to storage
+                // Try direct upload first (fastest, saves a privileged listBuckets roundtrip)
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('videos')
                     .upload(safeName, buffer, {
@@ -1553,7 +1547,27 @@ app.post('/api/admin/upload-video', async (req, res) => {
                     storageSuccess = true;
                     console.log("Uploaded video successfully to Supabase Storage:", finalUrl);
                 } else {
-                    console.warn("Failed to upload to Supabase Storage (will write local fallback):", uploadError.message);
+                    console.warn("Direct upload failed, attempting to ensure bucket exists and retry:", uploadError.message);
+                    try {
+                        await supabase.storage.createBucket('videos', { public: true });
+                    } catch (bucketErr) {
+                        console.warn("Failed or skipped bucket creation:", bucketErr);
+                    }
+                    // Retry upload
+                    const { data: retryData, error: retryError } = await supabase.storage
+                        .from('videos')
+                        .upload(safeName, buffer, {
+                            contentType: 'video/mp4',
+                            upsert: true
+                        });
+                    
+                    if (!retryError) {
+                        finalUrl = `${supabaseUrl}/storage/v1/object/public/videos/${safeName}`;
+                        storageSuccess = true;
+                        console.log("Uploaded video successfully to Supabase Storage after bucket creation:", finalUrl);
+                    } else {
+                        console.warn("Fell back because retry upload also failed:", retryError.message);
+                    }
                 }
             } catch (storageErr: any) {
                 console.warn("Supabase Storage error (will write local fallback):", storageErr.message);
@@ -1573,9 +1587,19 @@ app.post('/api/admin/upload-video', async (req, res) => {
         }
 
         // Save URL in settings
-        await supabase
-            .from('settings')
-            .upsert([{ key: 'video_url', value: finalUrl }]);
+        try {
+            const { error: upsertErr } = await supabase
+                .from('settings')
+                .upsert([{ key: 'video_url', value: finalUrl }]);
+            
+            if (upsertErr) {
+                console.warn("Failed to save video URL in settings table, updating memory fallback:", upsertErr.message);
+            }
+        } catch (dbErr: any) {
+            console.warn("Settings DB upsert exception, updating memory fallback:", dbErr.message);
+        }
+
+        fallbackVideoUrl = finalUrl;
 
         res.json({ success: true, url: finalUrl, storageSuccess });
     } catch (e: any) {

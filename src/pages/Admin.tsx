@@ -62,8 +62,8 @@ export default function Admin() {
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadStatus, setVideoUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [videoKey, setVideoKey] = useState(Date.now());
-  const [videoUrl, setVideoUrl] = useState('/public/explain.mp4');
-  const [videoUrlInput, setVideoUrlInput] = useState('/public/explain.mp4');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoUrlInput, setVideoUrlInput] = useState('');
   const [isVideoUrlLoading, setIsVideoUrlLoading] = useState(false);
   
   // Badges tracking state
@@ -126,8 +126,9 @@ export default function Admin() {
       setPromoCodeInput(promoRes.data.promoCode || '');
 
       const videoRes = await axios.get('/api/video-url');
-      setVideoUrl(videoRes.data.videoUrl || '/public/explain.mp4');
-      setVideoUrlInput(videoRes.data.videoUrl || '/public/explain.mp4');
+      const loadedUrl = (videoRes.data.videoUrl && videoRes.data.videoUrl !== '/public/explain.mp4') ? videoRes.data.videoUrl : '';
+      setVideoUrl(loadedUrl);
+      setVideoUrlInput(loadedUrl);
     } catch (e: any) {
       console.error("fetchData error:", e);
       if (e.response?.status === 401 || e.response?.status === 403) {
@@ -1261,7 +1262,11 @@ export default function Admin() {
               <div>
                 <label className="block text-xs font-black text-gray-400 mb-2">الفيديو النشط حالياً:</label>
                 <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 p-2 text-center">
-                  {(() => {
+                  {!videoUrl ? (
+                    <div className="py-8 text-gray-400 font-bold text-xs">
+                      لا يوجد فيديو نشط حالياً. يرجى رفع فيديو أو تعيين رابط.
+                    </div>
+                  ) : (() => {
                     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
                     const match = videoUrl ? videoUrl.match(regExp) : null;
                     const youtubeEmbedUrl = (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
@@ -1286,12 +1291,14 @@ export default function Admin() {
                       />
                     );
                   })()}
-                  <div className="mt-2 p-2 bg-white rounded-xl border border-gray-100 overflow-hidden text-ellipsis whitespace-nowrap">
-                    <span className="text-[10px] text-gray-400 font-bold block mb-1">الرابط النشط:</span>
-                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-red-600 font-bold underline hover:text-red-700">
-                      {videoUrl}
-                    </a>
-                  </div>
+                  {videoUrl && (
+                    <div className="mt-2 p-2 bg-white rounded-xl border border-gray-100 overflow-hidden text-ellipsis whitespace-nowrap">
+                      <span className="text-[10px] text-gray-400 font-bold block mb-1">الرابط النشط:</span>
+                      <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-red-600 font-bold underline hover:text-red-700">
+                        {videoUrl}
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
 
