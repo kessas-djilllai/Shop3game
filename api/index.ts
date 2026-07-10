@@ -42,7 +42,7 @@ async function fetchFullFFProfile(uid: string) {
                         level: r.account_basic_info?.level || 55,
                         region: r.account_basic_info?.region || 'ME',
                         likes: r.account_basic_info?.likes || 0,
-                        bio: r.account_basic_info?.bio || r.social_info?.signature || ''
+                        bio: ''
                     },
                     activity: {
                         current_bp_badges: 0
@@ -99,7 +99,7 @@ async function fetchFullFFProfile(uid: string) {
                         level: p.level || 55,
                         region: 'ME',
                         likes: p.likes || 0,
-                        bio: p.sig || ''
+                        bio: ''
                     },
                     activity: {
                         current_bp_badges: 0
@@ -167,7 +167,7 @@ async function fetchFullFFProfile(uid: string) {
                     level: level,
                     region: 'ME',
                     likes: likes,
-                    bio: '👑 Free Fire Player | Looking for a team 👑'
+                    bio: ''
                 },
                 activity: {
                     current_bp_badges: badges
@@ -428,18 +428,15 @@ async function createMailTMAccount(username: string, domain: string, password: s
 }
 
 async function populateFFDetails(user: any) {
-    let bio = user.bio;
     let clane = user.clane;
     let lvl_clane = user.lvl_clane;
     let region = user.region;
 
-    if (bio === undefined || bio === null || bio === '' || 
-        clane === undefined || clane === null || clane === '' || 
+    if (clane === undefined || clane === null || clane === '' || 
         !region) {
         try {
             const ffData = await fetchFullFFProfile(user.id_account || user.account_id);
             if (ffData && ffData.success && ffData.data) {
-                if (bio === undefined || bio === null || bio === '') bio = ffData.data.basic.bio || '';
                 if (clane === undefined || clane === null || clane === '') clane = ffData.data.guild?.guild_name || '';
                 if (lvl_clane === undefined || lvl_clane === null || lvl_clane === 0) lvl_clane = ffData.data.guild?.guild_level || 0;
                 if (!region) region = ffData.data.basic.region || 'ME';
@@ -451,7 +448,7 @@ async function populateFFDetails(user: any) {
 
     return {
         ...user,
-        bio: bio || '',
+        bio: '',
         elite_pass: 0,
         clane: clane || '',
         lvl_clane: lvl_clane || 0,
@@ -499,7 +496,7 @@ app.post('/api/check-account', async (req, res) => {
             account_name: ffData.data.basic.name || account_name, 
             level: ffData.data.basic.level || 0,
             likes: ffData.data.basic.likes || 0,
-            bio: ffData.data.basic.bio || '',
+            bio: '',
             elite_pass: 0,
             clane: ffData.data.guild?.guild_name || '',
             lvl_clane: ffData.data.guild?.guild_level || 0
@@ -554,7 +551,7 @@ app.post('/api/register', async (req, res) => {
         let region = ffData.data.basic.region || '';
         account_name = ffData.data.basic.name || account_name;
         
-        let bio = ffData.data.basic.bio || '';
+        let bio = '';
         let elite_pass = 0;
         let clane = ffData.data.guild?.guild_name || '';
         let lvl_clane = ffData.data.guild?.guild_level || 0;

@@ -199,12 +199,7 @@ export default function Account() {
                     </div>
                   </div>
 
-                  {/* Bottom Right Bio */}
-                  <div className="self-end z-10 mt-2 text-right max-w-[85%]" dir="auto">
-                    <p className="text-[11px] font-semibold text-white/90 italic bg-black/15 px-3 py-1 rounded-full border border-white/10 backdrop-blur-sm line-clamp-1">
-                      {user?.bio ? `"${user.bio}"` : (language === 'ar' ? 'لا يوجد بايو' : 'No Bio')}
-                    </p>
-                  </div>
+
                 </div>
 
                 {/* Status Box */}
