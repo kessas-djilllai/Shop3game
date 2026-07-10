@@ -25,11 +25,6 @@ export default function TempEmail() {
 
   const [isCopied, setIsCopied] = useState(false);
   
-  // Pull to refresh states
-  const [pullY, setPullY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startY, setStartY] = useState(0);
-
   const [isGeneratingNew, setIsGeneratingNew] = useState(false);
 
   // Custom Domain states
@@ -309,16 +304,21 @@ export default function TempEmail() {
   const fetchMessages = async (tkn: string) => {
     setRefreshing(true);
     try {
-      const res = await axios.get('/api/mailtm/messages', {
-        headers: { Authorization: `Bearer ${tkn}` }
-      });
-      const allMsgs = res.data['hydra:member'] || [];
+      let mailtmMsgs: any[] = [];
+      try {
+        const res = await axios.get('/api/mailtm/messages', {
+          headers: { Authorization: `Bearer ${tkn}` }
+        });
+        mailtmMsgs = res.data['hydra:member'] || [];
+      } catch (err) {
+        console.error("Failed to fetch Mail.tm messages", err);
+      }
       
       const thirtyHoursMs = 30 * 60 * 60 * 1000;
       const now = Date.now();
-      const validMsgs = [];
+      const validMailtmMsgs: any[] = [];
       
-      for (const msg of allMsgs) {
+      for (const msg of mailtmMsgs) {
         const msgTime = new Date(msg.createdAt).getTime();
         if (now - msgTime > thirtyHoursMs) {
           // Delete old message
@@ -326,30 +326,62 @@ export default function TempEmail() {
             headers: { Authorization: `Bearer ${tkn}` }
           }).catch(() => {});
         } else {
-          validMsgs.push(msg);
+          validMailtmMsgs.push(msg);
         }
       }
 
-      setMessages(validMsgs);
+      // 2. Fetch local DB messages
+      let localMsgs: any[] = [];
+      const authToken = localStorage.getItem('ff_token');
+      if (authToken) {
+        try {
+          const localRes = await axios.get('/api/messages', {
+            headers: { Authorization: `Bearer ${authToken}` }
+          });
+          localMsgs = localRes.data || [];
+        } catch (dbErr) {
+          console.error("Failed to fetch local DB messages", dbErr);
+        }
+      }
 
-      
-      // Sync to database
-      if (validMsgs && validMsgs.length > 0) {
-        const authToken = localStorage.getItem('ff_token');
-        if (authToken) {
-          try {
-            const syncRes = await axios.post('/api/messages/sync', { messages: validMsgs }, {
-              headers: { Authorization: `Bearer ${authToken}` }
+      // 3. Sync Mail.tm messages to local DB if we found new ones
+      if (validMailtmMsgs.length > 0 && authToken) {
+        try {
+          const syncRes = await axios.post('/api/messages/sync', { messages: validMailtmMsgs }, {
+            headers: { Authorization: `Bearer ${authToken}` }
+          });
+          const seenIds = syncRes.data.seen_messages || [];
+          if (seenIds.length > 0) {
+            validMailtmMsgs.forEach(m => {
+              if (seenIds.includes(m.id)) {
+                m.seen = true;
+              }
             });
-            const seenIds = syncRes.data.seen_messages || [];
-            if (seenIds.length > 0) {
-              setMessages(currentMsgs => currentMsgs.map(m => seenIds.includes(m.id) ? { ...m, seen: true } : m));
-            }
-          } catch(syncErr) {
-            console.error("Failed to sync messages to DB", syncErr);
           }
+        } catch(syncErr) {
+          console.error("Failed to sync messages to DB", syncErr);
         }
       }
+
+      // 4. Merge lists by id and sort by createdAt descending
+      const mergedMap = new Map<string, any>();
+      
+      localMsgs.forEach(msg => {
+        mergedMap.set(msg.id, msg);
+      });
+      
+      validMailtmMsgs.forEach(msg => {
+        mergedMap.set(msg.id, {
+          ...msg,
+          seen: msg.seen || mergedMap.get(msg.id)?.seen || false
+        });
+      });
+
+      const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+      setMessages(mergedList);
     } catch (err) {
       console.error(err);
     } finally {
@@ -442,31 +474,6 @@ export default function TempEmail() {
     }
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (window.scrollY === 0) {
-      setStartY(e.touches[0].clientY);
-      setIsDragging(true);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    const currentY = e.touches[0].clientY;
-    const diff = currentY - startY;
-
-    if (diff > 0) {
-      setPullY(Math.min(diff * 0.4, 80)); // Adds some resistance
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (isDragging && pullY >= 60) {
-      handleRefresh();
-    }
-    setIsDragging(false);
-    setPullY(0);
-  };
-
   const getRemainingTime = (createdAt: string) => {
     const thirtyHoursMs = 30 * 60 * 60 * 1000;
     const now = Date.now();
@@ -482,19 +489,7 @@ export default function TempEmail() {
     <div 
       className="min-h-screen bg-[#F8F9FA] font-sans flex flex-col pb-28" 
       dir={language === 'ar' ? 'rtl' : 'ltr'}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
-      <div 
-        className="flex justify-center items-center overflow-hidden bg-[#F8F9FA] transition-all duration-300"
-        style={{ height: pullY > 0 ? pullY : 0, opacity: pullY / 80 }}
-      >
-        <div className="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
-          <RefreshCcw className={`h-4 w-4 text-red-500 ${refreshing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${pullY * 4}deg)` }} />
-        </div>
-      </div>
-
       <main className="mx-auto max-w-4xl px-4 py-8 space-y-6 flex-1 w-full">
         {loading ? (
           <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center space-y-4 h-48">
@@ -583,6 +578,14 @@ export default function TempEmail() {
                   {language === 'ar' ? 'صندوق الوارد' : 'Inbox'}
                   <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs ml-2">{messages.length}</span>
                 </h2>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 px-3.5 py-1.5 rounded-xl text-sm font-black transition-all active:scale-95 duration-150 disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  <RefreshCcw className={`h-4 w-4 text-red-600 ${refreshing ? 'animate-spin' : ''}`} />
+                  <span>{language === 'ar' ? 'تحديث' : 'Refresh'}</span>
+                </button>
               </div>
 
               <div className="flex flex-1 overflow-hidden">

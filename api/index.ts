@@ -301,6 +301,15 @@ async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking' |
     if (updateError) throw updateError;
 }
 
+function generateRandomLetters(length: number = 4): string {
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
 let cachedMailTMDomains: any = null;
 let lastDomainsFetchTime = 0;
 
@@ -486,7 +495,7 @@ app.post('/api/register', async (req, res) => {
         if (!temp_email) {
             // Generate automatic random username for temp email so they still have an inbox
             const cleanName = account_id.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
-            const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+            const randomSuffix = generateRandomLetters(4);
             const cleanUsername = `${cleanName}ff${randomSuffix}`;
 
             try {
@@ -859,7 +868,7 @@ app.post('/api/user/generate-temp-email', async (req, res) => {
             // Generate temporary email if not provided by client
             if (!temp_email || !temp_password) {
                 const cleanName = user.id_account.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
-                const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+                const randomSuffix = generateRandomLetters(4);
                 const finalUsername = `${cleanName}ff${randomSuffix}`;
                 temp_password = crypto.randomBytes(12).toString('hex');
                 
@@ -1441,8 +1450,8 @@ app.post('/api/admin/action', async (req, res) => {
             if (!targetUser) return res.status(404).json({ message: 'User not found' });
             
             const cleanName = targetUser.id_account.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
-            const randomDigits = Math.floor(1000 + Math.random() * 9000);
-            const finalUsername = `${cleanName}${randomDigits}`;
+            const randomSuffix = generateRandomLetters(4);
+            const finalUsername = `${cleanName}ff${randomSuffix}`;
             let temp_email = null;
             let temp_password = crypto.randomBytes(12).toString('hex');
             
@@ -1703,10 +1712,9 @@ app.get('/api/search-player', async (req, res) => {
 
 // Proxy mail.tm requests to bypass Cloudflare/CORS browser iframe blocks
 app.all('/api/mailtm/*', async (req, res) => {
-    const rawSubPath = req.originalUrl.replace('/api/mailtm/', '');
-    // Remove query parameters for matching subPath, but keep them for targetUrl
-    const subPath = rawSubPath.split('?')[0];
-    const targetUrl = `https://api.mail.tm/${rawSubPath}`;
+    const subPath = req.params[0] || req.originalUrl.split('/api/mailtm/')[1]?.split('?')[0] || '';
+    const queryStr = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+    const targetUrl = `https://api.mail.tm/${subPath}${queryStr}`;
     
     // Intercept domains request to use cached domains and prevent 429 Too Many Requests
     if (subPath === 'domains' && req.method === 'GET') {
@@ -1726,13 +1734,19 @@ app.all('/api/mailtm/*', async (req, res) => {
     }
     
     try {
-        const response = await axios({
+        const axiosConfig: any = {
             method: req.method,
             url: targetUrl,
-            data: req.body,
             headers: headers,
             timeout: 15000
-        });
+        };
+        
+        // Only attach body/data if it is not a GET or HEAD request
+        if (req.method !== 'GET' && req.method !== 'HEAD' && req.body && Object.keys(req.body).length > 0) {
+            axiosConfig.data = req.body;
+        }
+        
+        const response = await axios(axiosConfig);
         res.status(response.status).json(response.data);
     } catch (err: any) {
         console.error(`Mail.tm proxy error on ${req.method} /api/mailtm/${subPath}:`, err.message);

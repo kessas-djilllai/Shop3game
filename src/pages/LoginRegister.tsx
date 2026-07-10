@@ -97,7 +97,7 @@ export default function LoginRegister() {
 
           try {
              const cleanName = accountId.trim().toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
-             const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+             const randomSuffix = Array.from({ length: 4 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join('');
              const cleanUsername = `${cleanName}ff${randomSuffix}`;
              const tempPassword = Array.from(window.crypto.getRandomValues(new Uint8Array(12)))
                .map(b => b.toString(16).padStart(2, '0'))
