@@ -15,7 +15,7 @@ import './index.css';
 // Context-like Auth Guard
 const AuthGuard = ({ children }: { children: ReactNode }) => {
   const token = localStorage.getItem('ff_token');
-  const [banInfo, setBanInfo] = useState<{isOpen: boolean, msg: string}>({isOpen: false, msg: ''});
+  const [banInfo, setBanInfo] = useState<{isOpen: boolean, msg: string, cause?: string}>({isOpen: false, msg: '', cause: ''});
 
   useEffect(() => {
     let intervalId: any;
@@ -36,8 +36,12 @@ const AuthGuard = ({ children }: { children: ReactNode }) => {
             }
           })
           .catch(err => {
-            if (err.response?.status === 403 && err.response?.data?.status === 'banned') {
-              setBanInfo({ isOpen: true, msg: err.response.data.message });
+            if (err.response?.status === 403) {
+              setBanInfo({ 
+                isOpen: true, 
+                msg: err.response.data?.message || 'تم حظر حسابك من قبل الإدارة لمخالفة شروط الاستخدام.',
+                cause: err.response.data?.ban_cause || 'مخالفة شروط الاستخدام وقوانين المنصة العامة'
+              });
             } else if (err.response?.status === 401 || err.response?.status === 404) {
               localStorage.removeItem('ff_token');
               window.location.href = '/';
@@ -61,20 +65,45 @@ const AuthGuard = ({ children }: { children: ReactNode }) => {
   
   if (banInfo.isOpen) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-        <div className="w-full max-w-sm rounded-3xl bg-white p-6 md:p-8 text-center shadow-2xl">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" dir="rtl">
+        <div className="w-full max-w-[360px] rounded-3xl bg-white p-6 text-right shadow-2xl space-y-4">
+          {/* Warning Icon and Message */}
+          <div className="flex flex-col items-center text-center pb-2 border-b border-gray-100">
+            <div className="h-14 w-14 rounded-full bg-red-50 text-red-600 flex items-center justify-center border border-red-100 mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-black text-gray-900">
+              تم تطبيق قرار الحظر
+            </h3>
+            <p className="text-xs text-gray-400 mt-1 font-bold">
+              وفقاً لمراجعة نشاط الحساب من قبل الإدارة
+            </p>
           </div>
-          <h3 className="mb-2 text-xl font-black text-gray-900">حسابك محظور</h3>
-          <p className="mb-6 text-sm font-bold text-gray-500">{banInfo.msg}</p>
+
+          {/* Ban Cause Block */}
+          <div className="rounded-2xl bg-red-50/40 border border-red-100/70 p-4 space-y-2">
+            <span className="block text-[10px] text-red-500 font-black tracking-wide uppercase">
+              سبب الحظر:
+            </span>
+            <p className="text-sm font-black text-red-900 leading-relaxed">
+              {banInfo.cause || 'مخالفة شروط الاستخدام وقوانين المنصة العامة'}
+            </p>
+          </div>
+
+          {/* Footer Notice */}
+          <p className="text-[10px] text-gray-400 font-bold text-center leading-relaxed">
+            إذا كنت تعتقد أن هذا الإجراء تم بالخطأ، يرجى التواصل مع الدعم الفني.
+          </p>
+
           <button 
             onClick={() => {
               localStorage.removeItem('ff_token');
               localStorage.removeItem('ff_user');
               window.location.href = '/';
             }}
-            className="w-full rounded-xl bg-[#CD1212] py-4 text-sm font-bold text-white transition-all active:scale-95"
+            className="w-full rounded-2xl bg-[#CD1212] text-white hover:bg-red-700 py-3.5 font-black text-sm shadow-md shadow-red-600/10 transition-all active:scale-95"
           >
             تسجيل الخروج
           </button>

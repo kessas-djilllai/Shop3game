@@ -139,11 +139,11 @@ export default function LoginRegister() {
           navigate('/charge');
       }
     } catch (err: any) {
-      if (err.response?.status === 403 && err.response?.data?.status === 'banned') {
+      if (err.response?.status === 403) {
         setBanInfo({ 
           isOpen: true, 
-          msg: err.response.data.message, 
-          cause: err.response.data.ban_cause 
+          msg: err.response.data?.message || (language === 'ar' ? 'حسابك محظور من قبل الإدارة' : 'Your account is banned by the administration'), 
+          cause: err.response.data?.ban_cause || (language === 'ar' ? 'مخالفة شروط الاستخدام وقوانين المنصة العامة' : 'Violation of platform terms of service')
         });
       } else {
         setError(err.response?.data?.message || 'فشل في عملية الاتصال');
@@ -270,7 +270,7 @@ export default function LoginRegister() {
         <div className="text-right space-y-4" dir={language === 'ar' ? 'rtl' : 'ltr'}>
           {/* Warning Icon and Message */}
           <div className="flex flex-col items-center text-center pb-2 border-b border-gray-100">
-            <div className="h-14 w-14 rounded-full bg-red-50 text-red-600 flex items-center justify-center border border-red-100 mb-3 animate-bounce">
+            <div className="h-14 w-14 rounded-full bg-red-50 text-red-600 flex items-center justify-center border border-red-100 mb-3">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
@@ -291,23 +291,6 @@ export default function LoginRegister() {
             <p className="text-sm font-black text-red-900 leading-relaxed">
               {banInfo.cause || (language === 'ar' ? 'مخالفة شروط الاستخدام وقوانين المنصة العامة' : 'Violation of platform terms of service')}
             </p>
-          </div>
-
-          {/* Countdown Message */}
-          <div className="rounded-2xl bg-gray-50 border border-gray-100 p-4 flex items-center gap-3">
-            <div className="text-gray-500 bg-white p-2 rounded-xl shadow-sm border border-gray-100 shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="block text-[10px] text-gray-400 font-bold">
-                {language === 'ar' ? 'فترة الصلاحية:' : 'Validity Period:'}
-              </span>
-              <p className="text-xs font-black text-gray-800 leading-normal mt-0.5">
-                {banInfo.msg}
-              </p>
-            </div>
           </div>
 
           {/* Footer Notice */}

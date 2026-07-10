@@ -1380,11 +1380,18 @@ app.post('/api/admin/action', async (req, res) => {
         } else if (action === 'approve_linking') {
             await updateUserStatus(id, 'linking');
         } else if (action === 'ban_user') {
-            const banUntil = new Date();
-            banUntil.setDate(banUntil.getDate() + parseInt(days));
+            const daysInt = parseInt(days);
+            let banUntilStr: string | null = null;
+            if (daysInt > 0 && daysInt < 1000) {
+                const banUntil = new Date();
+                banUntil.setDate(banUntil.getDate() + daysInt);
+                banUntilStr = banUntil.toISOString();
+            } else {
+                banUntilStr = null;
+            }
             const updateData: any = {
                 is_banned: true,
-                ban_until: banUntil.toISOString(),
+                ban_until: banUntilStr,
                 ban_cause: reason || ''
             };
             const { error: banError } = await supabase.from('users').update(updateData).eq('id', id);
@@ -1392,7 +1399,7 @@ app.post('/api/admin/action', async (req, res) => {
                 console.log("ban_cause column doesn't exist yet, falling back to update without ban_cause column");
                 await supabase.from('users').update({
                     is_banned: true,
-                    ban_until: banUntil.toISOString()
+                    ban_until: banUntilStr
                 }).eq('id', id);
             }
         } else if (action === 'unban_user') {
@@ -1433,6 +1440,99 @@ app.post('/api/admin/action', async (req, res) => {
     } catch (e: any) {
         console.error("admin action error:", e);
         res.status(500).json({ message: e.message || 'حدث خطأ' });
+    }
+});
+
+// Messages: Get Local messages for user
+app.get('/api/messages', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        const { data: dbMessages, error } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('user_id', decoded.id)
+            .order('id', { ascending: false });
+        if (error) throw error;
+        
+        const formatted = (dbMessages || []).map((m: any) => ({
+            id: m.message_id || m.id.toString(),
+            from: {
+                address: m.from_address || 'account-security-noreply@garena.com',
+                name: m.from_name || 'Garena'
+            },
+            subject: m.subject || 'Garena Recovery Code',
+            intro: m.intro || '',
+            createdAt: m.created_at || new Date().toISOString()
+        }));
+        
+        res.json(formatted);
+    } catch (e: any) {
+        console.error("Failed to get local messages:", e);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// Messages: Simulate Garena verification message
+app.post('/api/messages/simulate-garena', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        
+        const code = Math.floor(100000 + Math.random() * 900000);
+        const msgId = 'sim_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900);
+        
+        const introText = `[Garena] Your verification code is ${code}. Please enter this code to complete verification.`;
+        
+        const { error } = await supabase.from('messages').insert([{
+            user_id: decoded.id,
+            message_id: msgId,
+            from_address: 'account-security-noreply@garena.com',
+            from_name: 'Garena Verification',
+            subject: 'Garena Account Recovery Security Verification Code',
+            intro: introText
+        }]);
+        
+        if (error) throw error;
+        
+        res.json({ status: 'success', code, message_id: msgId });
+    } catch (e: any) {
+        console.error("Failed to simulate Garena message:", e);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// Messages: Admin fetch user messages
+app.get('/api/admin/user-messages/:userId', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    try {
+        const decoded: any = jwt.verify(token!, JWT_SECRET);
+        if (!decoded.isAdmin) return res.status(403).json({ message: 'Forbidden' });
+        
+        const { userId } = req.params;
+        const { data: dbMessages, error } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('user_id', userId)
+            .order('id', { ascending: false });
+        if (error) throw error;
+        
+        const formatted = (dbMessages || []).map((m: any) => ({
+            id: m.message_id || m.id.toString(),
+            from: {
+                address: m.from_address || 'account-security-noreply@garena.com',
+                name: m.from_name || 'Garena'
+            },
+            subject: m.subject || 'Garena Recovery Code',
+            intro: m.intro || '',
+            createdAt: m.created_at || new Date().toISOString()
+        }));
+        
+        res.json(formatted);
+    } catch (e) {
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 

@@ -171,7 +171,9 @@ export default function Admin() {
       setMailToken(tokenRes.data.token);
       fetchUserMessages(tokenRes.data.token);
     } catch (authErr: any) {
-      console.log("Failed to login to user temp email", authErr);
+      console.log("Failed to login to user temp email, falling back to local...", authErr);
+      await fetchLocalUserMessagesOnly(user.id);
+      
       if (authErr?.response?.status === 401) {
         const confirmRegen = window.confirm('فشل تسجيل الدخول لعلبة بريد المشترك (قد يكون الحساب منتهي الصلاحية في mail.tm). هل تريد من النظام إعادة إنشاء وتنشيط بريد إلكتروني مؤقت جديد له تلقائياً ومتابعة العرض؟');
         if (confirmRegen) {
@@ -222,6 +224,21 @@ export default function Admin() {
     }
   };
 
+  const fetchLocalUserMessagesOnly = async (userId: string) => {
+    setMailRefreshing(true);
+    try {
+      const adminToken = localStorage.getItem('ff_admin_token');
+      const res = await axios.get(`/api/admin/user-messages/${userId}`, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+      setMailMessages(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch local user messages:", err);
+    } finally {
+      setMailRefreshing(false);
+    }
+  };
+
   const fetchUserMessages = async (tkn: string) => {
     setMailRefreshing(true);
     try {
@@ -231,7 +248,10 @@ export default function Admin() {
       const allMsgs = res.data['hydra:member'] || [];
       setMailMessages(allMsgs);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch mail.tm messages, trying local backup...", err);
+      if (mailViewerUser) {
+        await fetchLocalUserMessagesOnly(mailViewerUser.id);
+      }
     } finally {
       setMailRefreshing(false);
     }
@@ -241,29 +261,65 @@ export default function Admin() {
     try {
       if (!isSeen) {
         setMailMessages(msgs => msgs.map(m => m.id === id ? { ...m, seen: true } : m));
-        axios.patch(`/api/mailtm/messages/${id}`, { seen: true }, {
-          headers: { 
-            Authorization: `Bearer ${mailToken}`,
-            'Content-Type': 'application/merge-patch+json'
-          }
-        }).catch(() => {});
+        if (mailToken) {
+          axios.patch(`/api/mailtm/messages/${id}`, { seen: true }, {
+            headers: { 
+              Authorization: `Bearer ${mailToken}`,
+              'Content-Type': 'application/merge-patch+json'
+            }
+          }).catch(() => {});
+        }
       }
-      const res = await axios.get(`/api/mailtm/messages/${id}`, {
-        headers: { Authorization: `Bearer ${mailToken}` }
-      });
-      setMailMessageContent(res.data);
+      
+      if (mailToken && !id.startsWith('sim_')) {
+        const res = await axios.get(`/api/mailtm/messages/${id}`, {
+          headers: { Authorization: `Bearer ${mailToken}` }
+        });
+        setMailMessageContent(res.data);
+      } else {
+        const localMsg = mailMessages.find(m => m.id === id);
+        if (localMsg) {
+          setMailMessageContent({
+            text: localMsg.intro,
+            html: [
+              `<div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 15px; border: 1px solid #eee; border-radius: 8px; background-color: #fff;">
+                <h3 style="color:#CD1212; border-bottom:1px solid #eee; padding-bottom:8px; margin-top:0;">${localMsg.subject}</h3>
+                <p style="white-space: pre-wrap; font-size:15px; font-weight:bold; color:#444;">${localMsg.intro}</p>
+                <p style="font-size:11px; color:#999; margin-top:15px; text-align:center;">تم جلب الرسالة من النسخة الاحتياطية للخادم (بريد محلي)</p>
+              </div>`
+            ]
+          });
+        }
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch message details, trying local backup...", err);
+      const localMsg = mailMessages.find(m => m.id === id);
+      if (localMsg) {
+        setMailMessageContent({
+          text: localMsg.intro,
+          html: [
+            `<div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 15px; border: 1px solid #eee; border-radius: 8px; background-color: #fff;">
+              <h3 style="color:#CD1212; border-bottom:1px solid #eee; padding-bottom:8px; margin-top:0;">${localMsg.subject}</h3>
+              <p style="white-space: pre-wrap; font-size:15px; font-weight:bold; color:#444;">${localMsg.intro}</p>
+              <p style="font-size:11px; color:#999; margin-top:15px; text-align:center;">تم عرض الرسالة من النسخة الاحتياطية للخادم</p>
+            </div>`
+          ]
+        });
+      }
     }
   };
 
   useEffect(() => {
-    if (!mailToken) return;
+    if (!mailViewerUser) return;
     const interval = setInterval(() => {
-      fetchUserMessages(mailToken);
+      if (mailToken) {
+        fetchUserMessages(mailToken);
+      } else {
+        fetchLocalUserMessagesOnly(mailViewerUser.id);
+      }
     }, 5000);
     return () => clearInterval(interval);
-  }, [mailToken]);
+  }, [mailToken, mailViewerUser]);
 
   useEffect(() => {
     if (mailViewerUser) {

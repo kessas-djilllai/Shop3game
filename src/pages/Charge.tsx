@@ -1,9 +1,38 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Bot, User, Send, ShieldCheck, CheckCircle2, Menu, LogOut, Loader2, Sparkles, AlertTriangle, ClipboardList, Search, ShieldAlert, Facebook, Instagram, Mail, X, Check, ArrowLeft } from "lucide-react";
+import { Bot, User, Send, ShieldCheck, CheckCircle2, Menu, LogOut, Loader2, Sparkles, AlertTriangle, ClipboardList, Search, ShieldAlert, Facebook, Instagram, Mail, X, Check, ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import Modal from "../components/Modal";
+
+function TypewriterText({ text, speed = 15, onComplete }: { text: string; speed?: number; onComplete?: () => void }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const indexRef = useRef(0);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  useEffect(() => {
+    setDisplayedText("");
+    indexRef.current = 0;
+    
+    const interval = setInterval(() => {
+      const idx = indexRef.current;
+      if (idx < text.length) {
+        setDisplayedText(prev => prev + text.charAt(idx));
+        indexRef.current = idx + 1;
+      } else {
+        clearInterval(interval);
+        if (onCompleteRef.current) {
+          onCompleteRef.current();
+        }
+      }
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text, speed]);
+
+  return <>{displayedText}</>;
+}
 
 type MessageType = 'start' | 'charged_before_question' | 'ask_charged_amount' | 'diamonds' | 'diamonds_available' | 'confirm_recharge' | 'ask_id' | 'processing' | 'done' | 'text';
 
@@ -50,6 +79,53 @@ export default function Charge() {
   const [termsModal, setTermsModal] = useState(false);
   const [accountStatus, setAccountStatus] = useState<string>('');
 
+  const [activeTypingId, setActiveTypingId] = useState<string | null>(null);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(() => {
+    return localStorage.getItem('ff_voice_enabled') !== 'false';
+  });
+
+  const toggleVoice = () => {
+    setIsVoiceEnabled(prev => {
+      const newVal = !prev;
+      localStorage.setItem('ff_voice_enabled', String(newVal));
+      if (!newVal) {
+        window.speechSynthesis.cancel();
+      }
+      return newVal;
+    });
+  };
+
+  const speakText = (text: string) => {
+    if (!isVoiceEnabled) return;
+    try {
+      window.speechSynthesis.cancel();
+      const cleanText = text
+        .replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, '')
+        .replace(/⏳|❌|✅|•/g, '');
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = language === 'ar' ? 'ar-SA' : 'en-US';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.error("Speech synthesis failed", e);
+    }
+  };
+
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.sender === 'ai' && lastMsg.id === activeTypingId) {
+      speakText(lastMsg.text);
+    }
+  }, [messages.length, activeTypingId]);
+
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
   useEffect(() => {
     const checkStatus = async () => {
       try {
@@ -79,11 +155,17 @@ export default function Charge() {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  const appendAiMessage = (text: string, type?: MessageType) => {
+    const newId = Date.now().toString();
+    setActiveTypingId(newId);
+    setMessages(prev => [...prev, { id: newId, sender: 'ai', text, type }]);
+  };
+
   const addAiMessage = (text: string, type: MessageType, delay = getRandomTypingTime()) => {
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
-      setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'ai', text, type }]);
+      appendAiMessage(text, type);
     }, delay);
   };
 
@@ -120,46 +202,35 @@ export default function Charge() {
       setIsTyping(false);
 
       if (u && u.cooldown_minutes > 0) {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: 'ai',
-            text: language === 'ar'
-              ? `⏳ عذراً، يمكنك إرسال طلب شحن واحد فقط كل ساعة.\n\nيرجى الانتظار ${u.cooldown_minutes} دقيقة حتى تتمكن من إرسال طلب شحن جديد.`
-              : `⏳ Sorry, you can only submit one recharge request per hour.\n\nPlease wait ${u.cooldown_minutes} minutes before submitting a new request.`,
-            type: 'done'
-          }
-        ]);
+        appendAiMessage(
+          language === 'ar'
+            ? `⏳ عذراً، يمكنك إرسال طلب شحن واحد فقط كل ساعة.\n\nيرجى الانتظار ${u.cooldown_minutes} دقيقة حتى تتمكن من إرسال طلب شحن جديد.`
+            : `⏳ Sorry, you can only submit one recharge request per hour.\n\nPlease wait ${u.cooldown_minutes} minutes before submitting a new request.`,
+          'done'
+        );
         return;
       }
       
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          sender: 'ai',
-          text: language === 'ar' 
-            ? 'هل قمت بالشحن من الموقع مسبقاً؟' 
-            : 'Have you recharged from the site before?', 
-          type: 'charged_before_question'
-        }
-      ]);
+      appendAiMessage(
+        language === 'ar' 
+          ? 'هل قمت بالشحن من الموقع مسبقاً؟' 
+          : 'Have you recharged from the site before?', 
+        'charged_before_question'
+      );
       
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err.response?.status !== 403) {
+          console.error(err);
+      }
       setIsTyping(false);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          sender: 'ai',
-          text: language === 'ar' 
+      appendAiMessage(
+        err.response?.status === 403
+          ? `❌ ${err.response.data?.message || (language === 'ar' ? 'حسابك محظور من قبل الإدارة' : 'Your account is banned by the administration')}`
+          : (language === 'ar' 
             ? '❌ عذراً، حدث خطأ أثناء فحص حالة حسابك من السيرفر. يرجى المحاولة لاحقاً.' 
-            : '❌ Sorry, an error occurred while checking your account status. Please try again later.',
-          type: 'done'
-        }
-      ]);
+            : '❌ Sorry, an error occurred while checking your account status. Please try again later.'),
+        'done'
+      );
     }
   };
 
@@ -172,29 +243,19 @@ export default function Charge() {
       setIsTyping(false);
       
       if (choice === 'yes') {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: 'ai',
-            text: language === 'ar' 
-              ? 'كم عدد الجواهر التي شحنتها مسبقاً؟' 
-              : 'How many diamonds did you recharge previously?', 
-            type: 'ask_charged_amount'
-          }
-        ]);
+        appendAiMessage(
+          language === 'ar' 
+            ? 'كم عدد الجواهر التي شحنتها مسبقاً؟' 
+            : 'How many diamonds did you recharge previously?', 
+          'ask_charged_amount'
+        );
       } else {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: 'ai',
-            text: language === 'ar' 
-              ? 'كم عدد الجواهر أو نوع العرض الذي تريد شحنه؟' 
-              : 'How many diamonds or what package do you want?', 
-            type: 'diamonds'
-          }
-        ]);
+        appendAiMessage(
+          language === 'ar' 
+            ? 'كم عدد الجواهر أو نوع العرض الذي تريد شحنه؟' 
+            : 'How many diamonds or what package do you want?', 
+          'diamonds'
+        );
       }
     }, getRandomTypingTime());
   };
@@ -210,17 +271,12 @@ export default function Charge() {
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          sender: 'ai',
-          text: language === 'ar' 
-            ? 'هل تريد الشحن مرة أخرى؟' 
-            : 'Do you want to recharge again?', 
-          type: 'confirm_recharge'
-        }
-      ]);
+      appendAiMessage(
+        language === 'ar' 
+          ? 'هل تريد الشحن مرة أخرى؟' 
+          : 'Do you want to recharge again?', 
+        'confirm_recharge'
+      );
     }, getRandomTypingTime());
   };
 
@@ -233,17 +289,12 @@ export default function Charge() {
       setIsTyping(true);
       setTimeout(() => {
         setIsTyping(false);
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: 'ai',
-            text: language === 'ar'
-              ? `❌ عذراً، هذا العرض (${label}) غير متوفر حالياً بسبب نفاذ الكمية.\n\nيرجى اختيار باقة أخرى من الخيارات أدناه:`
-              : `❌ Sorry, this offer (${label}) is currently out of stock.\n\nPlease select another package from the options below:`,
-            type: 'diamonds_available'
-          }
-        ]);
+        appendAiMessage(
+          language === 'ar'
+            ? `❌ عذراً، هذا العرض (${label}) غير متوفر حالياً بسبب نفاذ الكمية.\n\nيرجى اختيار باقة أخرى من الخيارات أدناه:`
+            : `❌ Sorry, this offer (${label}) is currently out of stock.\n\nPlease select another package from the options below:`,
+          'diamonds_available'
+        );
       }, getRandomTypingTime());
       return;
     }
@@ -259,17 +310,12 @@ export default function Charge() {
       setIsTyping(true);
       setTimeout(() => {
         setIsTyping(false);
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: 'ai',
-            text: language === 'ar' 
-              ? 'يرجى إدخال أيدي الحساب (Player ID) الذي تريد الشحن له:' 
-              : 'Please enter the Player ID you want to recharge:', 
-            type: 'ask_id'
-          }
-        ]);
+        appendAiMessage(
+          language === 'ar' 
+            ? 'يرجى إدخال أيدي الحساب (Player ID) الذي تريد الشحن له:' 
+            : 'Please enter the Player ID you want to recharge:', 
+          'ask_id'
+        );
       }, getRandomTypingTime());
     }
   };
@@ -281,29 +327,19 @@ export default function Charge() {
     setTimeout(() => {
       setIsTyping(false);
       if (choice === 'yes') {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: 'ai',
-            text: language === 'ar' 
-              ? 'كم عدد الجواهر أو نوع العرض الذي تريد شحنه؟' 
-              : 'How many diamonds or what package do you want?', 
-            type: 'diamonds'
-          }
-        ]);
+        appendAiMessage(
+          language === 'ar' 
+            ? 'كم عدد الجواهر أو نوع العرض الذي تريد شحنه؟' 
+            : 'How many diamonds or what package do you want?', 
+          'diamonds'
+        );
       } else {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: 'ai',
-            text: language === 'ar' 
-              ? 'حسناً كما تحب، إذا احتجت للشحن يمكنك الطلب في أي وقت بالضغط على "البدء" أدناه.' 
-              : 'Alright as you wish, if you need to recharge you can request at any time by clicking "Start" below.', 
-            type: 'start'
-          }
-        ]);
+        appendAiMessage(
+          language === 'ar' 
+            ? 'حسناً كما تحب، إذا احتجت للشحن يمكنك الطلب في أي وقت بالضغط على "البدء" أدناه.' 
+            : 'Alright as you wish, if you need to recharge you can request at any time by clicking "Start" below.', 
+          'start'
+        );
       }
     }, getRandomTypingTime());
   };
@@ -415,17 +451,12 @@ export default function Charge() {
       // Remove processing message
       setMessages(prev => prev.filter(msg => msg.id !== processingMsgId));
       
-      setMessages(prev => [
-        ...prev, 
-        { 
-          id: Date.now().toString(), 
-          sender: 'ai', 
-          text: language === 'ar' 
-            ? `✅ تمت العملية بنجاح! تم استلام طلبك ورقم الطلب الخاص بك هو: ${orderNum}. يمكنك متابعة حالة طلبك من قسم طلباتي.`
-            : `✅ Process completed successfully! Your order has been received, order number: ${orderNum}. You can track it in My Orders.`,
-          type: 'done' 
-        }
-      ]);
+      appendAiMessage(
+        language === 'ar' 
+          ? `✅ تمت العملية بنجاح! تم استلام طلبك ورقم الطلب الخاص بك هو: ${orderNum}. يمكنك متابعة حالة طلبك من قسم طلباتي.`
+          : `✅ Process completed successfully! Your order has been received, order number: ${orderNum}. You can track it in My Orders.`,
+        'done'
+      );
     } catch (error: any) {
       setIsTyping(false);
       // Remove processing message
@@ -439,15 +470,7 @@ export default function Charge() {
         errorText = language === 'ar' ? error.response.data.message : error.response.data.message_en;
       }
 
-      setMessages(prev => [
-        ...prev, 
-        { 
-          id: Date.now().toString(), 
-          sender: 'ai', 
-          text: errorText,
-          type: 'done' 
-        }
-      ]);
+      appendAiMessage(errorText, 'done');
     }
   };
 
@@ -463,17 +486,12 @@ export default function Charge() {
       ? "One of your account activation requirements has been rejected by the system. Please check with support or update the required details for re-evaluation."
       : "Please wait for the system to confirm and activate all your account requirements, then try again.";
 
-    setMessages(prev => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        sender: 'ai',
-        text: language === 'ar'
-          ? (exactMessageAr || `❌ فشل طلب الشحن بسبب التالي:\n• ${failReason}.\n\n${hintMessageAr}`)
-          : (exactMessageEn || `❌ Charge request failed due to the following:\n• ${failReason}.\n\n${hintMessageEn}`),
-        type: 'done'
-      }
-    ]);
+    appendAiMessage(
+      language === 'ar'
+        ? (exactMessageAr || `❌ فشل طلب الشحن بسبب التالي:\n• ${failReason}.\n\n${hintMessageAr}`)
+        : (exactMessageEn || `❌ Charge request failed due to the following:\n• ${failReason}.\n\n${hintMessageEn}`),
+      'done'
+    );
   };
 
   const currentMessageType = messages[messages.length - 1]?.sender === 'ai' ? messages[messages.length - 1]?.type : null;
@@ -642,6 +660,19 @@ export default function Charge() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Voice Toggle Button */}
+            <button
+              onClick={toggleVoice}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-all active:scale-95 ${
+                isVoiceEnabled 
+                  ? 'border-red-100 bg-red-50 text-[#CD1212] shadow-sm shadow-red-100' 
+                  : 'border-gray-200 bg-white text-gray-400 shadow-sm'
+              }`}
+              title={language === 'ar' ? 'تفعيل/تعطيل الصوت' : 'Toggle Voice'}
+            >
+              {isVoiceEnabled ? <Volume2 className="h-5.5 w-5.5" /> : <VolumeX className="h-5.5 w-5.5" />}
+            </button>
+            
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-full">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
               <span className="text-xs font-black text-gray-800 tracking-wide">
@@ -680,6 +711,8 @@ export default function Charge() {
                     <Loader2 className="h-5 w-5 text-[#CD1212] animate-spin shrink-0" />
                     <span className="text-gray-800 font-bold">{msg.text}</span>
                   </div>
+                ) : msg.id === activeTypingId ? (
+                  <TypewriterText text={msg.text} speed={15} onComplete={() => setActiveTypingId(null)} />
                 ) : (
                   msg.text
                 )}
@@ -691,6 +724,20 @@ export default function Charge() {
               </div>
             </div>
           ))}
+          
+          {isTyping && (
+            <div className="flex gap-3 justify-start animate-pulse">
+              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-[#CD1212] to-red-600 flex items-center justify-center shadow-md mt-1 border border-red-500/10">
+                <Bot className="h-4.5 w-4.5 text-white animate-spin-slow" />
+              </div>
+              <div className="bg-white text-gray-800 border border-gray-100 shadow-sm rounded-2xl rounded-tr-none px-5 py-4 flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 bg-[#CD1212] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                <span className="h-2.5 w-2.5 bg-[#CD1212] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                <span className="h-2.5 w-2.5 bg-[#CD1212] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
       </main>

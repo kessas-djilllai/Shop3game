@@ -56,6 +56,8 @@ export default function Account() {
                     localStorage.removeItem('ff_token');
                     localStorage.removeItem('ff_user');
                     navigate('/');
+                } else if (err.response?.status === 403) {
+                    // Ignored here; handled by App.tsx's AuthGuard
                 } else {
                     console.error("Failed to fetch user data in profile", err);
                 }
