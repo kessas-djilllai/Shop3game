@@ -1407,6 +1407,46 @@ app.get('/api/promo-code', async (req, res) => {
     }
 });
 
+// Settings: Get Video URL
+app.get('/api/video-url', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'video_url')
+            .single();
+
+        if (error || !data) {
+            return res.json({ videoUrl: '/public/explain.mp4' });
+        }
+        res.json({ videoUrl: data.value });
+    } catch (e) {
+        res.json({ videoUrl: '/public/explain.mp4' });
+    }
+});
+
+// Admin: Set Video URL manually
+app.post('/api/admin/video-url', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    const { videoUrl } = req.body;
+    try {
+        const decoded: any = jwt.verify(token!, JWT_SECRET);
+        if (!decoded.isAdmin) throw new Error();
+
+        if (!videoUrl) {
+            return res.status(400).json({ message: 'No video URL provided' });
+        }
+
+        await supabase
+            .from('settings')
+            .upsert([{ key: 'video_url', value: videoUrl }]);
+
+        res.json({ status: 'success', videoUrl });
+    } catch (e) {
+        res.status(403).json({ message: 'Unauthorized' });
+    }
+});
+
 // Admin: Set Promo Code
 app.post('/api/admin/promo-code', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
@@ -1447,14 +1487,60 @@ app.post('/api/admin/upload-video', async (req, res) => {
 
         const safeName = 'explain.mp4';
         const buffer = Buffer.from(videoData, 'base64');
-        const publicDir = path.join(process.cwd(), 'public');
         
-        if (!fs.existsSync(publicDir)) {
-            fs.mkdirSync(publicDir, { recursive: true });
+        let finalUrl = `/public/${safeName}`;
+        let storageSuccess = false;
+
+        // Try to upload to Supabase Storage if configured
+        if (supabaseUrl && supabaseKey) {
+            try {
+                // Ensure bucket exists
+                const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+                if (!listError) {
+                    const bucketExists = buckets?.some(b => b.name === 'videos');
+                    if (!bucketExists) {
+                        await supabase.storage.createBucket('videos', { public: true });
+                    }
+                }
+
+                // Upload to storage
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('videos')
+                    .upload(safeName, buffer, {
+                        contentType: 'video/mp4',
+                        upsert: true
+                    });
+
+                if (!uploadError) {
+                    finalUrl = `${supabaseUrl}/storage/v1/object/public/videos/${safeName}`;
+                    storageSuccess = true;
+                    console.log("Uploaded video successfully to Supabase Storage:", finalUrl);
+                } else {
+                    console.warn("Failed to upload to Supabase Storage (will write local fallback):", uploadError.message);
+                }
+            } catch (storageErr: any) {
+                console.warn("Supabase Storage error (will write local fallback):", storageErr.message);
+            }
         }
-        
-        fs.writeFileSync(path.join(publicDir, safeName), buffer);
-        res.json({ success: true, url: `/public/${safeName}` });
+
+        // Try local filesystem fallback
+        try {
+            const publicDir = path.join(process.cwd(), 'public');
+            if (!fs.existsSync(publicDir)) {
+                fs.mkdirSync(publicDir, { recursive: true });
+            }
+            fs.writeFileSync(path.join(publicDir, safeName), buffer);
+            console.log("Wrote file to local public/ folder.");
+        } catch (localErr: any) {
+            console.warn("Local filesystem write failed (expected on Vercel):", localErr.message);
+        }
+
+        // Save URL in settings
+        await supabase
+            .from('settings')
+            .upsert([{ key: 'video_url', value: finalUrl }]);
+
+        res.json({ success: true, url: finalUrl, storageSuccess });
     } catch (e: any) {
         console.error(e);
         res.status(500).json({ message: e.message || 'Error uploading video' });

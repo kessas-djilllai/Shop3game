@@ -174,9 +174,19 @@ export default function Charge() {
     setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user', text, type: 'text' }]);
   };
 
-  const handleShowUsageVideo = () => {
+  const handleShowUsageVideo = async () => {
     addUserMessage(language === 'ar' ? 'طريقة استخدام المنصة' : 'How to use the platform');
     setIsTyping(true);
+    
+    let currentVideoUrl = '/public/explain.mp4';
+    try {
+      const res = await axios.get('/api/video-url');
+      if (res.data && res.data.videoUrl) {
+        currentVideoUrl = res.data.videoUrl;
+      }
+    } catch (err) {
+      console.warn("Failed to fetch video URL, using default:", err);
+    }
     
     setTimeout(() => {
       setIsTyping(false);
@@ -191,7 +201,7 @@ export default function Charge() {
             ? 'إليك فيديو توضيحي يشرح طريقة استخدام المنصة بالتفصيل. يمكنك تشغيله مباشرة من هنا:' 
             : 'Here is an explanatory video showing you how to use the platform in detail. You can watch it directly here:', 
           type: 'start',
-          videoUrl: '/public/explain.mp4' 
+          videoUrl: currentVideoUrl 
         }
       ]);
     }, 1500);

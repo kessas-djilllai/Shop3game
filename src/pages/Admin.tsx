@@ -61,6 +61,9 @@ export default function Admin() {
   const [isVideoUploading, setIsVideoUploading] = useState(false);
   const [videoUploadStatus, setVideoUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [videoKey, setVideoKey] = useState(Date.now());
+  const [videoUrl, setVideoUrl] = useState('/public/explain.mp4');
+  const [videoUrlInput, setVideoUrlInput] = useState('/public/explain.mp4');
+  const [isVideoUrlLoading, setIsVideoUrlLoading] = useState(false);
   
   // Badges tracking state
   const [lastSeenPendingOrders, setLastSeenPendingOrders] = useState<number>(0);
@@ -120,6 +123,10 @@ export default function Admin() {
       const promoRes = await axios.get('/api/promo-code');
       setCurrentPromo(promoRes.data.promoCode || '');
       setPromoCodeInput(promoRes.data.promoCode || '');
+
+      const videoRes = await axios.get('/api/video-url');
+      setVideoUrl(videoRes.data.videoUrl || '/public/explain.mp4');
+      setVideoUrlInput(videoRes.data.videoUrl || '/public/explain.mp4');
     } catch (e: any) {
       console.error("fetchData error:", e);
       if (e.response?.status === 401 || e.response?.status === 403) {
@@ -184,6 +191,8 @@ export default function Admin() {
 
         if (res.data.success) {
           setVideoUploadStatus('success');
+          setVideoUrl(res.data.url);
+          setVideoUrlInput(res.data.url);
           setVideoKey(Date.now());
           alert('تم رفع الفيديو بنجاح!');
         } else {
@@ -197,6 +206,27 @@ export default function Admin() {
       setVideoUploadStatus('error');
       alert('حدث خطأ في رفع الفيديو');
       setIsVideoUploading(false);
+    }
+  };
+
+  const saveManualVideoUrl = async () => {
+    if (!videoUrlInput.trim()) {
+      alert('يرجى إدخال رابط فيديو صالح');
+      return;
+    }
+    setIsVideoUrlLoading(true);
+    try {
+      const token = localStorage.getItem('ff_admin_token');
+      await axios.post('/api/admin/video-url', { videoUrl: videoUrlInput }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setVideoUrl(videoUrlInput);
+      setVideoKey(Date.now());
+      alert('تم حفظ رابط الفيديو وتنشيطه بنجاح');
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'حدث خطأ في حفظ الرابط');
+    } finally {
+      setIsVideoUrlLoading(false);
     }
   };
 
@@ -1217,25 +1247,50 @@ export default function Admin() {
             </h2>
             <div className="rounded-3xl border border-gray-100 bg-white p-6 md:p-8 shadow-sm flex flex-col gap-6">
               <p className="text-xs text-gray-500 font-bold leading-relaxed">
-                هنا يمكنك رفع فيديو من جهازك ليشاهده الأعضاء مباشرة في المحادثة عند النقر على زر "طريقة استخدام المنصة".
+                هنا يمكنك رفع فيديو شرح أو وضع رابط فيديو مباشر (مثل رابط YouTube أو رابط فيديو MP4 خارجي) ليشاهده الأعضاء في المحادثة مباشرة عند النقر على زر "طريقة استخدام المنصة".
               </p>
               
               <div>
-                <label className="block text-xs font-black text-gray-400 mb-2">الفيديو الحالي:</label>
+                <label className="block text-xs font-black text-gray-400 mb-2">الفيديو النشط حالياً:</label>
                 <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 p-2 text-center">
                   <video 
                     key={videoKey}
-                    src="/public/explain.mp4" 
+                    src={videoUrl} 
                     controls 
                     className="w-full max-h-[220px] object-contain rounded-xl bg-black"
                   />
-                  <p className="text-[10px] text-gray-400 font-bold mt-2">
-                    المسار: /public/explain.mp4 (سيتم استبداله تلقائياً عند رفع فيديو جديد)
-                  </p>
+                  <div className="mt-2 p-2 bg-white rounded-xl border border-gray-100 overflow-hidden text-ellipsis whitespace-nowrap">
+                    <span className="text-[10px] text-gray-400 font-bold block mb-1">الرابط النشط:</span>
+                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-red-600 font-bold underline hover:text-red-700">
+                      {videoUrl}
+                    </a>
+                  </div>
                 </div>
               </div>
 
-              <div>
+              {/* تعيين رابط فيديو يدوياً */}
+              <div className="border-t border-gray-50 pt-4">
+                <label className="block text-xs font-black text-gray-500 mb-2 mr-1">أو ضع رابط فيديو مباشر يدوياً (YouTube أو MP4):</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="مثال: https://www.youtube.com/watch?v=... أو رابط مباشر"
+                    value={videoUrlInput}
+                    onChange={(e) => setVideoUrlInput(e.target.value)}
+                    className="flex-1 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm font-bold text-gray-900 outline-none transition-all focus:border-[#CD1212] focus:bg-white focus:ring-2 focus:ring-red-100"
+                    dir="ltr"
+                  />
+                  <LoaderButton
+                    onClick={saveManualVideoUrl}
+                    isLoading={isVideoUrlLoading}
+                    className="bg-[#CD1212] text-white hover:bg-red-700 px-6 rounded-2xl font-black text-xs shadow-md"
+                  >
+                    تطبيق الرابط
+                  </LoaderButton>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-50 pt-4">
                 <label className="block text-xs font-black text-gray-500 mb-2 mr-1">رفع فيديو جديد من الجهاز (صيغة MP4):</label>
                 <div className="flex items-center justify-center w-full">
                   <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-gray-100/50 hover:border-red-300 transition-all">
@@ -1244,7 +1299,7 @@ export default function Admin() {
                       <p className="text-xs font-bold text-gray-500 text-center px-4">
                         {isVideoUploading ? 'جاري الرفع والتحميل...' : 'اضغط لاختيار فيديو MP4 من جهازك'}
                       </p>
-                      <p className="text-[10px] text-gray-400 font-bold mt-1">الحد الأقصى 50 ميجابايت</p>
+                      <p className="text-[10px] text-gray-400 font-bold mt-1 font-mono">يتم الحفظ في Supabase Storage السحابي تلقائياً</p>
                     </div>
                     <input 
                       type="file" 
