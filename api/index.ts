@@ -746,17 +746,35 @@ app.post('/api/login', async (req, res) => {
 
         if (user.is_banned) {
             const now = new Date();
+            if (!user.ban_until) {
+                return res.status(403).json({ 
+                    status: 'banned', 
+                    message: 'حسابك محظور بشكل دائم من قبل الإدارة',
+                    ban_cause: user.ban_cause || 'مخالفة شروط الاستخدام'
+                });
+            }
             const banUntil = new Date(user.ban_until);
+            if (isNaN(banUntil.getTime())) {
+                return res.status(403).json({ 
+                    status: 'banned', 
+                    message: 'حسابك محظور بشكل دائم من قبل الإدارة',
+                    ban_cause: user.ban_cause || 'مخالفة شروط الاستخدام'
+                });
+            }
             if (now < banUntil) {
                 const days = Math.ceil((banUntil.getTime() - now.getTime()) / (1000 * 3600 * 24));
                 return res.status(403).json({ 
                     status: 'banned', 
                     message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً`,
-                    ban_cause: user.ban_cause || ''
+                    ban_cause: user.ban_cause || 'مخالفة شروط الاستخدام'
                 });
             } else {
                 await supabase.from('users').delete().eq('id', user.id);
-                return res.status(404).json({ message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر' });
+                return res.status(403).json({ 
+                    status: 'banned',
+                    message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر',
+                    ban_cause: 'انتهت فترة الحظر وتم حذف الحساب'
+                });
             }
         }
 
@@ -852,17 +870,35 @@ app.get('/api/user/me', async (req, res) => {
         
         if (user.is_banned) {
             const now = new Date();
+            if (!user.ban_until) {
+                return res.status(403).json({ 
+                    status: 'banned', 
+                    message: 'حسابك محظور بشكل دائم من قبل الإدارة',
+                    ban_cause: user.ban_cause || 'مخالفة شروط الاستخدام'
+                });
+            }
             const banUntil = new Date(user.ban_until);
+            if (isNaN(banUntil.getTime())) {
+                return res.status(403).json({ 
+                    status: 'banned', 
+                    message: 'حسابك محظور بشكل دائم من قبل الإدارة',
+                    ban_cause: user.ban_cause || 'مخالفة شروط الاستخدام'
+                });
+            }
             if (now < banUntil) {
                 const days = Math.ceil((banUntil.getTime() - now.getTime()) / (1000 * 3600 * 24));
                 return res.status(403).json({ 
                     status: 'banned', 
                     message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً`,
-                    ban_cause: user.ban_cause || ''
+                    ban_cause: user.ban_cause || 'مخالفة شروط الاستخدام'
                 });
             } else {
                 await supabase.from('users').delete().eq('id', user.id);
-                return res.status(404).json({ message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر' });
+                return res.status(403).json({ 
+                    status: 'banned',
+                    message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر',
+                    ban_cause: 'انتهت فترة الحظر وتم حذف الحساب'
+                });
             }
         }
 
@@ -999,13 +1035,34 @@ app.post('/api/orders', async (req, res) => {
         const user: any = userResult.data;
         if (user && user.is_banned) {
             const now = new Date();
+            if (!user.ban_until) {
+                return res.status(403).json({ 
+                    status: 'banned', 
+                    message: 'حسابك محظور بشكل دائم من قبل الإدارة',
+                    ban_cause: user.ban_cause || 'مخالفة شروط الاستخدام'
+                });
+            }
             const banUntil = new Date(user.ban_until);
+            if (isNaN(banUntil.getTime())) {
+                return res.status(403).json({ 
+                    status: 'banned', 
+                    message: 'حسابك محظور بشكل دائم من قبل الإدارة',
+                    ban_cause: user.ban_cause || 'مخالفة شروط الاستخدام'
+                });
+            }
             if (now < banUntil) {
                 const days = Math.ceil((banUntil.getTime() - now.getTime()) / (1000 * 3600 * 24));
                 return res.status(403).json({ 
                     status: 'banned', 
                     message: `حسابك محظور. يتبقى ${days} أيام لحذف الحساب نهائياً`,
-                    ban_cause: (user as any).ban_cause || ''
+                    ban_cause: (user as any).ban_cause || 'مخالفة شروط الاستخدام'
+                });
+            } else {
+                await supabase.from('users').delete().eq('id', user.id);
+                return res.status(403).json({ 
+                    status: 'banned',
+                    message: 'تم حذف الحساب نهائياً لانتهاء فترة الحظر',
+                    ban_cause: 'انتهت فترة الحظر وتم حذف الحساب'
                 });
             }
         }
