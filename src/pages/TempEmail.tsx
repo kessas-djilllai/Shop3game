@@ -31,7 +31,6 @@ export default function TempEmail() {
   const [startY, setStartY] = useState(0);
 
   const [isGeneratingNew, setIsGeneratingNew] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
 
   // Custom Domain states
   const [domains, setDomains] = useState<string[]>([]);
@@ -178,29 +177,6 @@ export default function TempEmail() {
       setMessages(localRes.data || []);
     } catch (dbErr) {
       console.error("Local DB fetch failed in fetchLocalMessagesOnly", dbErr);
-    }
-  };
-
-  const handleSimulateGarena = async () => {
-    setIsSimulating(true);
-    try {
-      const authToken = localStorage.getItem('ff_token');
-      const res = await axios.post('/api/messages/simulate-garena', {}, {
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
-      if (res.data?.status === 'success') {
-        alert(language === 'ar' ? `تم توليد رمز التحقق من جارينا فري فاير بنجاح! الرمز: ${res.data.code}` : `Garena verification code generated successfully! Code: ${res.data.code}`);
-        if (token) {
-          await fetchMessages(token);
-        } else {
-          await fetchLocalMessagesOnly();
-        }
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert(language === 'ar' ? 'فشل توليد رمز التحقق التلقائي' : 'Failed to generate verification code');
-    } finally {
-      setIsSimulating(false);
     }
   };
 
@@ -601,22 +577,12 @@ export default function TempEmail() {
 
             {/* Inbox */}
             <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">
-              <div className="border-b border-gray-100 p-4 flex items-center justify-between bg-gray-50 gap-2 flex-wrap">
+              <div className="border-b border-gray-100 p-4 flex items-center justify-between bg-gray-50">
                 <h2 className="font-black text-gray-800 flex items-center gap-2">
                   <Mail className="h-5 w-5 text-gray-500" />
                   {language === 'ar' ? 'صندوق الوارد' : 'Inbox'}
                   <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs ml-2">{messages.length}</span>
                 </h2>
-                <button
-                  onClick={handleSimulateGarena}
-                  disabled={isSimulating}
-                  className="text-xs bg-red-50 text-red-600 border border-red-100/60 px-3 py-1.5 rounded-xl font-black hover:bg-red-100 transition-colors flex items-center gap-1.5 active:scale-95 duration-150 disabled:opacity-50"
-                >
-                  {isSimulating ? (
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                  ) : '⚡'}
-                  {language === 'ar' ? 'توليد كود جارينا تلقائياً' : 'Auto-generate Garena code'}
-                </button>
               </div>
 
               <div className="flex flex-1 overflow-hidden">

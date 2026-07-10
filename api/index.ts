@@ -301,6 +301,38 @@ async function updateUserStatus(id: any, type: 'account' | 'level' | 'linking' |
     if (updateError) throw updateError;
 }
 
+let cachedMailTMDomains: any = null;
+let lastDomainsFetchTime = 0;
+
+// Helper to fetch domains with cache
+async function getMailTMDomains(): Promise<any> {
+    const now = Date.now();
+    // Cache for 1 hour to prevent 429
+    if (cachedMailTMDomains && (now - lastDomainsFetchTime < 3600000)) {
+        return cachedMailTMDomains;
+    }
+    try {
+        const response = await axios.get('https://api.mail.tm/domains', { timeout: 10000 });
+        if (response.data && response.data['hydra:member']) {
+            cachedMailTMDomains = response.data;
+            lastDomainsFetchTime = now;
+            return cachedMailTMDomains;
+        }
+    } catch (err: any) {
+        console.error("Failed to fetch Mail.tm domains, using fallback cache:", err.message);
+    }
+    
+    // Return cache if available, otherwise a hardcoded fallback structure
+    if (cachedMailTMDomains) return cachedMailTMDomains;
+    
+    return {
+        'hydra:member': [
+            { domain: 'web-library.net' },
+            { domain: 'bty.net' }
+        ]
+    };
+}
+
 // Helper to register mail.tm account with optional collision-resistance
 async function createMailTMAccount(username: string, domain: string, password: string, allowSuffix: boolean = false): Promise<string> {
     let email = `${username}@${domain}`;
@@ -465,9 +497,9 @@ app.post('/api/register', async (req, res) => {
                 } catch (domainErr: any) {
                     console.log("Could not register on web-library.net, falling back to mail.tm default domain.");
                     try {
-                        const domainsRes = await axios.get('https://api.mail.tm/domains');
-                        if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
-                            const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                        const domainsRes = await getMailTMDomains();
+                        if (domainsRes['hydra:member'] && domainsRes['hydra:member'].length > 0) {
+                            const fallbackDomain = domainsRes['hydra:member'][0].domain;
                             temp_email = await createMailTMAccount(cleanUsername, fallbackDomain, temp_password, true);
                         } else {
                             throw domainErr;
@@ -837,9 +869,9 @@ app.post('/api/user/generate-temp-email', async (req, res) => {
                 } catch (domainErr: any) {
                     console.log("Could not register temp email with target domain, trying fallback.");
                     try {
-                        const domainsRes = await axios.get('https://api.mail.tm/domains');
-                        if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
-                            const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                        const domainsRes = await getMailTMDomains();
+                        if (domainsRes['hydra:member'] && domainsRes['hydra:member'].length > 0) {
+                            const fallbackDomain = domainsRes['hydra:member'][0].domain;
                             temp_email = await createMailTMAccount(finalUsername, fallbackDomain, temp_password, true);
                         } else {
                             throw domainErr;
@@ -1420,9 +1452,9 @@ app.post('/api/admin/action', async (req, res) => {
             } catch (domainErr: any) {
                 console.log("Admin regenerate fallback to mail.tm default domain:");
                 try {
-                    const domainsRes = await axios.get('https://api.mail.tm/domains');
-                    if (domainsRes.data['hydra:member'] && domainsRes.data['hydra:member'].length > 0) {
-                        const fallbackDomain = domainsRes.data['hydra:member'][0].domain;
+                    const domainsRes = await getMailTMDomains();
+                    if (domainsRes['hydra:member'] && domainsRes['hydra:member'].length > 0) {
+                        const fallbackDomain = domainsRes['hydra:member'][0].domain;
                         temp_email = await createMailTMAccount(finalUsername, fallbackDomain, temp_password, true);
                     } else {
                         throw domainErr;
@@ -1671,8 +1703,20 @@ app.get('/api/search-player', async (req, res) => {
 
 // Proxy mail.tm requests to bypass Cloudflare/CORS browser iframe blocks
 app.all('/api/mailtm/*', async (req, res) => {
-    const subPath = req.originalUrl.replace('/api/mailtm/', '');
-    const targetUrl = `https://api.mail.tm/${subPath}`;
+    const rawSubPath = req.originalUrl.replace('/api/mailtm/', '');
+    // Remove query parameters for matching subPath, but keep them for targetUrl
+    const subPath = rawSubPath.split('?')[0];
+    const targetUrl = `https://api.mail.tm/${rawSubPath}`;
+    
+    // Intercept domains request to use cached domains and prevent 429 Too Many Requests
+    if (subPath === 'domains' && req.method === 'GET') {
+        try {
+            const data = await getMailTMDomains();
+            return res.json(data);
+        } catch (err: any) {
+            console.error("Error in cached domains proxy intercept:", err.message);
+        }
+    }
     
     const headers: any = {
         'Content-Type': 'application/json',
@@ -1692,6 +1736,34 @@ app.all('/api/mailtm/*', async (req, res) => {
         res.status(response.status).json(response.data);
     } catch (err: any) {
         console.error(`Mail.tm proxy error on ${req.method} /api/mailtm/${subPath}:`, err.message);
+        
+        // Intercept 401 Unauthorized on token creation to self-heal and create the account on-the-fly
+        if (err.response && err.response.status === 401 && subPath === 'token' && req.method === 'POST') {
+            const { address, password } = req.body || {};
+            if (address && password) {
+                console.log(`Automatic self-heal: Account ${address} not found (401) on Mail.tm. Registering on-the-fly...`);
+                try {
+                    // Try to create the account first
+                    await axios.post('https://api.mail.tm/accounts', {
+                        address,
+                        password
+                    }, { timeout: 10000 });
+                    
+                    console.log(`Self-heal: Registration successful for ${address}. Retrying token retrieval...`);
+                    // Retry getting the token
+                    const retryResponse = await axios.post('https://api.mail.tm/token', {
+                        address,
+                        password
+                    }, { timeout: 10000 });
+                    
+                    return res.status(retryResponse.status).json(retryResponse.data);
+                } catch (signupErr: any) {
+                    console.error("Self-heal registration/token retry failed:", signupErr.message);
+                    // Continue to return original 401 if self-heal fails
+                }
+            }
+        }
+        
         if (err.response) {
             res.status(err.response.status).json(err.response.data);
         } else {
