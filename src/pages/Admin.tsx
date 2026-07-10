@@ -1253,12 +1253,31 @@ export default function Admin() {
               <div>
                 <label className="block text-xs font-black text-gray-400 mb-2">الفيديو النشط حالياً:</label>
                 <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 p-2 text-center">
-                  <video 
-                    key={videoKey}
-                    src={videoUrl} 
-                    controls 
-                    className="w-full max-h-[220px] object-contain rounded-xl bg-black"
-                  />
+                  {(() => {
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    const match = videoUrl ? videoUrl.match(regExp) : null;
+                    const youtubeEmbedUrl = (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+                    
+                    return youtubeEmbedUrl ? (
+                      <div className="relative w-full pb-[56.25%] h-0 bg-black rounded-xl overflow-hidden">
+                        <iframe
+                          key={videoKey}
+                          src={youtubeEmbedUrl}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="absolute top-0 left-0 w-full h-full"
+                        />
+                      </div>
+                    ) : (
+                      <video 
+                        key={videoKey}
+                        src={videoUrl} 
+                        controls 
+                        className="w-full max-h-[220px] object-contain rounded-xl bg-black"
+                      />
+                    );
+                  })()}
                   <div className="mt-2 p-2 bg-white rounded-xl border border-gray-100 overflow-hidden text-ellipsis whitespace-nowrap">
                     <span className="text-[10px] text-gray-400 font-bold block mb-1">الرابط النشط:</span>
                     <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-red-600 font-bold underline hover:text-red-700">

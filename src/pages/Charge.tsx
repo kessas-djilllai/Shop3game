@@ -34,6 +34,13 @@ function TypewriterText({ text, speed = 15, onComplete }: { text: string; speed?
   return <>{displayedText}</>;
 }
 
+function getYouTubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+}
+
 type MessageType = 'start' | 'charged_before_question' | 'ask_charged_amount' | 'diamonds' | 'diamonds_available' | 'confirm_recharge' | 'ask_id' | 'processing' | 'done' | 'text';
 
 interface Message {
@@ -178,30 +185,36 @@ export default function Charge() {
     addUserMessage(language === 'ar' ? 'طريقة استخدام المنصة' : 'How to use the platform');
     setIsTyping(true);
     
-    let currentVideoUrl = '/public/explain.mp4';
+    let currentVideoUrl = '';
     try {
       const res = await axios.get('/api/video-url');
-      if (res.data && res.data.videoUrl) {
+      if (res.data && res.data.videoUrl && res.data.videoUrl !== '/public/explain.mp4') {
         currentVideoUrl = res.data.videoUrl;
       }
     } catch (err) {
-      console.warn("Failed to fetch video URL, using default:", err);
+      console.warn("Failed to fetch video URL:", err);
     }
     
     setTimeout(() => {
       setIsTyping(false);
       const newId = Date.now().toString();
       setActiveTypingId(newId);
+      
+      const hasVideo = !!currentVideoUrl;
       setMessages(prev => [
         ...prev, 
         { 
           id: newId, 
           sender: 'ai', 
-          text: language === 'ar' 
-            ? 'إليك فيديو توضيحي يشرح طريقة استخدام المنصة بالتفصيل. يمكنك تشغيله مباشرة من هنا:' 
-            : 'Here is an explanatory video showing you how to use the platform in detail. You can watch it directly here:', 
+          text: hasVideo 
+            ? (language === 'ar' 
+                ? 'إليك فيديو توضيحي يشرح طريقة استخدام المنصة بالتفصيل. يمكنك تشغيله مباشرة من هنا:' 
+                : 'Here is an explanatory video showing you how to use the platform in detail. You can watch it directly here:')
+            : (language === 'ar'
+                ? 'مرحباً بك! لم تقم الإدارة برفع أو تعيين فيديو شرح للمنصة بعد. يمكنك التواصل مع الدعم الفني لأي استفسارات.'
+                : 'Welcome! The administration has not uploaded or set an explanatory video for the platform yet. You can contact support for any inquiries.'), 
           type: 'start',
-          videoUrl: currentVideoUrl 
+          videoUrl: currentVideoUrl || undefined
         }
       ]);
     }, 1500);
@@ -749,16 +762,31 @@ export default function Charge() {
                   msg.text
                 )}
 
-                {msg.videoUrl && (
-                  <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-black/5 shadow-sm">
-                    <video 
-                      src={msg.videoUrl} 
-                      controls 
-                      playsInline
-                      className="w-full max-h-[300px] object-contain rounded-xl bg-black"
-                    />
-                  </div>
-                )}
+                {msg.videoUrl && (() => {
+                  const youtubeEmbedUrl = getYouTubeEmbedUrl(msg.videoUrl);
+                  return (
+                    <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-black/5 shadow-sm">
+                      {youtubeEmbedUrl ? (
+                        <div className="relative w-full pb-[56.25%] h-0 bg-black rounded-xl overflow-hidden">
+                          <iframe
+                            src={youtubeEmbedUrl}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="absolute top-0 left-0 w-full h-full"
+                          />
+                        </div>
+                      ) : (
+                        <video 
+                          src={msg.videoUrl} 
+                          controls 
+                          playsInline
+                          className="w-full max-h-[300px] object-contain rounded-xl bg-black"
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {msg.sender === 'ai' && msg.id === messages[messages.length - 1]?.id && (
                   <div className="mt-2">
