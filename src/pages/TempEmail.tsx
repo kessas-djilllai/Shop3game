@@ -221,7 +221,25 @@ export default function TempEmail() {
         } catch (authErr: any) {
           console.log("Failed to login to temp email", authErr);
           if (authErr?.response?.status === 401) {
-            console.log("Unauthorized 401 detected, automatically regenerating temp email...");
+            console.log("Unauthorized 401 detected, attempting to self-heal by registering on Mail.tm on-the-fly...");
+            try {
+              await axios.post('/api/mailtm/accounts', {
+                address: userLocal.temp_email,
+                password: userLocal.temp_password
+              });
+              console.log("Self-heal registration succeeded, retrying login...");
+              const retryTokenRes = await axios.post('/api/mailtm/token', {
+                address: userLocal.temp_email,
+                password: userLocal.temp_password
+              });
+              setToken(retryTokenRes.data.token);
+              fetchMessages(retryTokenRes.data.token);
+              return;
+            } catch (registerErr: any) {
+              console.log("Self-heal registration failed, falling back to regenerating temp email...", registerErr);
+            }
+
+            console.log("Self-heal failed or was bypassed, regenerating temp email...");
             try {
               const res = await axios.post('/api/user/generate-temp-email', { 
                 force: true

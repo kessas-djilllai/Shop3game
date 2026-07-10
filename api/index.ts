@@ -437,9 +437,19 @@ app.post('/api/register', async (req, res) => {
         }).trim().replace(/[<>'"/;`%,]/g, '');
 
         // Use temp_email from request if provided (client-side generation bypasses Vercel limits), otherwise generate on server
-        // Use temp_email from request if provided (client-side generation bypasses Vercel limits), otherwise generate on server
         let temp_email = req.body.temp_email || null;
         let temp_password = req.body.temp_password || null;
+
+        if (temp_email && temp_password) {
+            try {
+                const emailParts = temp_email.split('@');
+                const username = emailParts[0];
+                const domain = emailParts[1] || 'web-library.net';
+                await createMailTMAccount(username, domain, temp_password, false);
+            } catch (err: any) {
+                console.log("Server signup registration check: Already exists or failed to register on Mail.tm on-the-fly:", err.message);
+            }
+        }
 
         if (!temp_email) {
             // Generate automatic random username for temp email so they still have an inbox

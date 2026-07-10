@@ -99,7 +99,9 @@ export default function LoginRegister() {
              const cleanName = accountId.trim().toString().toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
              const randomSuffix = Math.floor(1000 + Math.random() * 9000);
              const cleanUsername = `${cleanName}ff${randomSuffix}`;
-             const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+             const tempPassword = Array.from(window.crypto.getRandomValues(new Uint8Array(12)))
+               .map(b => b.toString(16).padStart(2, '0'))
+               .join('');
              
              let email = `${cleanUsername}@web-library.net`;
              let createSuccess = false;
