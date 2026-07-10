@@ -1501,6 +1501,13 @@ app.post('/api/admin/video-url', async (req, res) => {
             .from('settings')
             .upsert([{ key: 'video_url', value: videoUrl }]);
 
+        if (error) {
+            console.error("Supabase settings upsert error:", error);
+            return res.status(400).json({ 
+                message: `فشل حفظ الرابط في قاعدة البيانات (Supabase RLS Error): ${error.message}.\n\nيرجى تشغيل الكود التالي في SQL Editor في لوحة تحكم Supabase لحل المشكلة وتمكين التحديث:\n\nALTER TABLE settings ENABLE ROW LEVEL SECURITY;\nDROP POLICY IF EXISTS "Allow all for settings" ON settings;\nCREATE POLICY "Allow all for settings" ON settings FOR ALL TO public USING (true) WITH CHECK (true);`
+            });
+        }
+
         fallbackVideoUrl = videoUrl;
 
         res.json({ status: 'success', videoUrl });
@@ -1526,9 +1533,13 @@ app.post('/api/admin/promo-code', async (req, res) => {
             .upsert([{ key: 'promo_code', value: promoCode }]);
             
         if (error) {
-            // Fallback
-            fallbackPromoCode = promoCode;
+            console.error("Supabase promo_code upsert error:", error);
+            return res.status(400).json({
+                message: `فشل حفظ الكود في قاعدة البيانات (Supabase RLS Error): ${error.message}.\n\nيرجى تشغيل الكود التالي في SQL Editor في لوحة تحكم Supabase لحل المشكلة وتمكين التحديث:\n\nALTER TABLE settings ENABLE ROW LEVEL SECURITY;\nDROP POLICY IF EXISTS "Allow all for settings" ON settings;\nCREATE POLICY "Allow all for settings" ON settings FOR ALL TO public USING (true) WITH CHECK (true);`
+            });
         }
+        
+        fallbackPromoCode = promoCode;
         res.json({ status: 'success' });
     } catch (e) {
         res.status(403).json({ message: 'Unauthorized' });
