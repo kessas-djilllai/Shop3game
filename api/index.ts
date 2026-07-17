@@ -21,14 +21,14 @@ const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function fetchFullFFProfile(uid: string) {
+async function fetchFullFFProfile(uid: string): Promise<any> {
     const try00cc = async () => {
         const res = await axios.get(`https://www.00cc.eu.cc/freefire-stalk?uid=${uid}`, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36",
                 "Accept": "application/json"
             },
-            timeout: 2500
+            timeout: 10000
         });
 
         if (res.data && res.data.success && res.data.result) {
@@ -59,7 +59,7 @@ async function fetchFullFFProfile(uid: string) {
 
     const tryFfStalk = async () => {
         const stalkPromise = ffStalk(uid);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("ffStalk timeout")), 2500));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("ffStalk timeout")), 10000));
         const ffData = await Promise.race([stalkPromise, timeoutPromise]) as any;
         if (ffData && ffData.success && ffData.data) {
             return {
@@ -87,7 +87,7 @@ async function fetchFullFFProfile(uid: string) {
     };
 
     const tryFreeFireInfo = async () => {
-        const res = await axios.get(`https://freefireinfo-zy9l.onrender.com/api/v1/player-profile?uid=${uid}&server=ME`, { timeout: 2500 });
+        const res = await axios.get(`https://freefireinfo-zy9l.onrender.com/api/v1/player-profile?uid=${uid}&server=ME`, { timeout: 10000 });
         if (res.data && res.data.status === 'success' && res.data.player) {
             const p = res.data.player;
             return {
@@ -124,59 +124,9 @@ async function fetchFullFFProfile(uid: string) {
         ]);
         return results;
     } catch (raceErr) {
-        // Dynamic deterministic mock profile generation without logging verbose error keywords
-        let hash = 0;
-        for (let i = 0; i < uid.length; i++) {
-            hash = (hash << 5) - hash + uid.charCodeAt(i);
-            hash |= 0;
-        }
-        const absHash = Math.abs(hash);
-
-        const arabicNames = [
-            "سفاح_العرب", "قناص_الشرق", "عميد_القروب", "مهاجم_مجهول", 
-            "فارس_الظلام", "الاسطورة_FF", "المدمر_العربي", "مجهول_الهوية",
-            "طير_شلوى", "صقر_الجزيرة", "راعي_فزعة", "شبح_البلاك"
-        ];
-        const englishNames = [
-            "Sniper_Pro", "Alpha_YT", "ME_Legend", "Destroyer_99",
-            "Ghost_Rider", "Dark_Knight", "FF_Master", "Shadow_Ninja",
-            "Vortex_Gamer", "Red_Arrow"
-        ];
-
-        const finalName = absHash % 2 === 0 
-            ? arabicNames[absHash % arabicNames.length] + `_${absHash % 100}`
-            : englishNames[absHash % englishNames.length] + `_${absHash % 100}`;
-
-        const level = 45 + (absHash % 35);
-        const likes = 350 + (absHash % 9500);
-        const badges = 50 + (absHash % 450);
-        
-        const guildNames = [
-            "التحالف_العربي", "أساطير_الشرق", "عاصفة_الحزم", "النخبة",
-            "Al-Nasser", "Arabs_Team", "Black_Hawk", "Desert_Storm"
-        ];
-        const guildName = guildNames[absHash % guildNames.length];
-        const guildLevel = 2 + (absHash % 4);
-
         return {
-            success: true,
-            data: {
-                basic: {
-                    uid: uid,
-                    name: finalName,
-                    level: level,
-                    region: 'ME',
-                    likes: likes,
-                    bio: ''
-                },
-                activity: {
-                    current_bp_badges: badges
-                },
-                guild: {
-                    guild_name: guildName,
-                    guild_level: guildLevel
-                }
-            }
+            success: false,
+            message: 'معرف اللاعب (ID) غير صحيح أو غير موجود في اللعبة'
         };
     }
 }
@@ -566,14 +516,7 @@ app.post('/api/register', async (req, res) => {
         let temp_password = req.body.temp_password || null;
 
         if (temp_email && temp_password) {
-            try {
-                const emailParts = temp_email.split('@');
-                const username = emailParts[0];
-                const domain = emailParts[1] || 'web-library.net';
-                await createMailTMAccount(username, domain, temp_password, false);
-            } catch (err: any) {
-                console.log("Server signup registration check: Already exists or failed to register on Mail.tm on-the-fly:", err.message);
-            }
+            console.log(`Server signup: Utilizing client-supplied temp email: ${temp_email}`);
         }
 
         if (!temp_email) {
