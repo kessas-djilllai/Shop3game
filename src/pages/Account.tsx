@@ -3,6 +3,84 @@ import { useNavigate } from 'react-router-dom';
 import { User, LogOut, Calendar, Shield, Link, CheckCircle, XCircle, Clock, Check, Award, ShieldCheck, AlertCircle, Trophy, Heart, Globe, Users, Quote, Flag } from 'lucide-react';
 import axios from 'axios';
 import { useLanguage } from '../context/LanguageContext';
+import { motion } from 'motion/react';
+
+function AdvancedProgressRing({ color = 'indigo', language }: { color: string; language?: string }) {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const interval = setInterval(() => {
+      start += Math.floor(Math.random() * 12) + 6;
+      if (start >= 100) {
+        start = 100;
+        clearInterval(interval);
+      }
+      setProgress(start);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const colorMap: Record<string, { stroke: string; text: string; bg: string }> = {
+    indigo: { stroke: 'stroke-indigo-500', text: 'text-indigo-600', bg: 'bg-indigo-500/10' },
+    rose: { stroke: 'stroke-rose-500', text: 'text-rose-600', bg: 'bg-rose-500/10' },
+    sky: { stroke: 'stroke-sky-500', text: 'text-sky-600', bg: 'bg-sky-500/10' },
+    amber: { stroke: 'stroke-amber-600', text: 'text-amber-700', bg: 'bg-amber-500/10' },
+  };
+
+  const theme = colorMap[color] || colorMap.indigo;
+  const radius = 14;
+  const strokeWidth = 3;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="flex items-center gap-2.5 relative z-10 py-1" dir="ltr">
+      <div className="relative w-10 h-10 flex items-center justify-center">
+        {/* Glow behind */}
+        <div className={`absolute inset-1.5 rounded-full ${theme.bg} animate-pulse`} />
+        {/* Circular progress SVG */}
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+          <circle
+            cx="18"
+            cy="18"
+            r={radius}
+            className="stroke-slate-100"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+          />
+          <motion.circle
+            cx="18"
+            cy="18"
+            r={radius}
+            className={theme.stroke}
+            strokeWidth={strokeWidth}
+            fill="transparent"
+            strokeDasharray={circumference}
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset }}
+            transition={{ duration: 0.1, ease: "easeOut" }}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[8px] font-black font-mono text-slate-600">
+            {progress}%
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-col text-left">
+        <span className="text-[9px] font-black text-slate-400 tracking-wider animate-pulse uppercase">
+          {progress < 100 
+            ? (language === 'ar' ? 'جاري الفحص...' : 'SCANNING...') 
+            : (language === 'ar' ? 'اكتمل' : 'SYNCED')
+          }
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function Account() {
   const navigate = useNavigate();
@@ -78,10 +156,36 @@ export default function Account() {
     
     try {
       const token = localStorage.getItem('ff_token');
+      if (!token) {
+        navigate('/');
+        return;
+      }
+
+      // Fetch the latest user info from backend to check if email and app password are saved
+      const userRes = await axios.get('/api/user/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const latestUser = userRes.data?.user;
+      if (latestUser) {
+        setUser(latestUser);
+        localStorage.setItem('ff_user', JSON.stringify(latestUser));
+      }
+
+      const email = latestUser?.linked_email || user?.linked_email;
+      const appPass = latestUser?.app_password || user?.app_password;
+
+      if (!email || !appPass) {
+        setFormError(language === 'ar' ? 'يرجى ملء وحفظ إيميل الربط وكلمة مرور التطبيقات في صفحة الإعدادات أولاً!' : 'Please fill and save your recovery email and app password in settings page first!');
+        setFormLoading(false);
+        return;
+      }
+
+      // Now call submit-verification
       const res = await axios.post('/api/user/submit-verification', {
-        id_account: user?.id_account || user?.account_id,
-        level: user?.level || 0,
-        likes: user?.likes || 0,
+        id_account: latestUser?.id_account || latestUser?.account_id || user?.id_account || user?.account_id,
+        level: latestUser?.level || user?.level || 0,
+        likes: latestUser?.likes || user?.likes || 0,
         is_linked: 'yes'
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -285,7 +389,7 @@ export default function Account() {
                     <span className="text-[11px] font-extrabold text-indigo-500 uppercase tracking-wider">{language === 'ar' ? 'المستوى' : 'Level'}</span>
                   </div>
                   {isFetchingUser ? (
-                    <span className="h-7 w-12 animate-pulse bg-indigo-100 rounded-lg block"></span>
+                    <AdvancedProgressRing color="indigo" language={language} />
                   ) : (
                     <span className="text-2xl font-black text-indigo-950 relative z-10">{user?.level || 0}</span>
                   )}
@@ -301,7 +405,7 @@ export default function Account() {
                     <span className="text-[11px] font-extrabold text-rose-500 uppercase tracking-wider">{language === 'ar' ? 'اللايكات' : 'Likes'}</span>
                   </div>
                   {isFetchingUser ? (
-                    <span className="h-7 w-12 animate-pulse bg-rose-100 rounded-lg block"></span>
+                    <AdvancedProgressRing color="rose" language={language} />
                   ) : (
                     <span className="text-2xl font-black text-rose-955 relative z-10">{user?.likes || 0}</span>
                   )}
@@ -317,7 +421,7 @@ export default function Account() {
                     <div className="flex flex-col text-left">
                       <span className="text-[11px] font-extrabold text-sky-500 uppercase tracking-wider">{language === 'ar' ? 'المنطقة' : 'Region'}</span>
                       {isFetchingUser ? (
-                        <span className="h-5 w-16 animate-pulse bg-sky-100 rounded-md mt-0.5 block"></span>
+                        <AdvancedProgressRing color="sky" language={language} />
                       ) : (
                         <span className="text-base font-black text-sky-950">{(user?.region || 'ME') === 'ME' && language === 'ar' ? 'الشرق الأوسط' : (user?.region || 'ME')}</span>
                       )}
@@ -336,7 +440,7 @@ export default function Account() {
                     <div className="flex flex-col text-left">
                       <span className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wider">{language === 'ar' ? 'الرابطة' : 'Guild'}</span>
                       {isFetchingUser ? (
-                        <span className="h-5 w-16 animate-pulse bg-amber-100 rounded-md mt-0.5 block"></span>
+                        <AdvancedProgressRing color="amber" language={language} />
                       ) : (
                         <div className="flex flex-col mt-0.5">
                           <span className="text-base font-black text-amber-950">
