@@ -5,8 +5,8 @@ import LoginRegister from './pages/LoginRegister';
 import Charge from './pages/Charge';
 import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
-import Settings from './pages/Settings';
 import Admin from './pages/Admin';
+import TempEmail from './pages/TempEmail';
 import LiveFeed from './pages/LiveFeed';
 import { LanguageProvider } from './context/LanguageContext';
 import BottomNavigation from './components/BottomNavigation';
@@ -139,8 +139,8 @@ export default function App() {
             <Route path="/account" element={
               <AuthGuard><Account /></AuthGuard>
             } />
-            <Route path="/settings" element={
-              <AuthGuard><Settings /></AuthGuard>
+            <Route path="/email" element={
+              <AuthGuard><TempEmail /></AuthGuard>
             } />
             <Route path="/live-feed" element={
               <AuthGuard><LiveFeed /></AuthGuard>

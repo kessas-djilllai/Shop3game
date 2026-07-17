@@ -1517,21 +1517,6 @@ export default function Admin() {
               <span className="font-black text-gray-900 break-all text-sm">{selectedUser.id_account || selectedUser.account_id}</span>
             </div>
 
-            {selectedUser.linked_email && (
-              <div className="rounded-xl border border-blue-100 bg-blue-50/30 px-3 py-2 space-y-1.5 text-left" dir="ltr">
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-[10px] font-black text-blue-700">Linked Email:</span>
-                  <span className="font-mono font-black text-blue-900 text-[11px] break-all select-all">{selectedUser.linked_email}</span>
-                </div>
-                {selectedUser.app_password && (
-                  <div className="flex justify-between items-center gap-2 border-t border-blue-100/50 pt-1">
-                    <span className="text-[10px] font-black text-blue-700">App Password:</span>
-                    <span className="font-mono font-black text-blue-900 text-[11px] break-all select-all">{selectedUser.app_password}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
             {selectedUser.temp_email && (
               <button 
                 onClick={() => {

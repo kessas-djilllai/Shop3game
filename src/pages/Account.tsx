@@ -76,12 +76,6 @@ export default function Account() {
     setFormLoading(true);
     setFormError('');
     
-    if (!user?.linked_email || !user?.app_password) {
-      setFormError(language === 'ar' ? 'يرجى ملء وحفظ إيميل الربط وكلمة مرور التطبيقات في صفحة الإعدادات أولاً!' : 'Please fill and save your recovery email and app password in settings page first!');
-      setFormLoading(false);
-      return;
-    }
-    
     try {
       const token = localStorage.getItem('ff_token');
       const res = await axios.post('/api/user/submit-verification', {

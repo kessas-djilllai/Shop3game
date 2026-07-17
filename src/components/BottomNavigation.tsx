@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, User, ClipboardList, Mail, Shield, Activity, Settings } from 'lucide-react';
+import { Home, User, ClipboardList, Mail, Shield, Activity } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function BottomNavigation() {
@@ -34,16 +34,16 @@ export default function BottomNavigation() {
       path: '/account',
     },
     {
-      id: 'settings',
-      label: language === 'ar' ? 'الإعدادات' : 'Settings',
-      icon: Settings,
-      path: '/settings',
-    },
-    {
       id: 'orders',
       label: language === 'ar' ? 'طلباتي' : 'My Orders',
       icon: ClipboardList,
       path: '/my-orders',
+    },
+    {
+      id: 'email',
+      label: language === 'ar' ? 'البريد' : 'Email',
+      icon: Mail,
+      path: '/email',
     }
   ];
 
