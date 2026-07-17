@@ -6,22 +6,6 @@ import { useLanguage } from '../context/LanguageContext';
 import { motion } from 'motion/react';
 
 function AdvancedProgressRing({ color = 'indigo', language }: { color: string; language?: string }) {
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    let start = 0;
-    const interval = setInterval(() => {
-      start += Math.floor(Math.random() * 12) + 6;
-      if (start >= 100) {
-        start = 100;
-        clearInterval(interval);
-      }
-      setProgress(start);
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, []);
-
   const colorMap: Record<string, { stroke: string; text: string; bg: string }> = {
     indigo: { stroke: 'stroke-indigo-500', text: 'text-indigo-600', bg: 'bg-indigo-500/10' },
     rose: { stroke: 'stroke-rose-500', text: 'text-rose-600', bg: 'bg-rose-500/10' },
@@ -33,15 +17,19 @@ function AdvancedProgressRing({ color = 'indigo', language }: { color: string; l
   const radius = 14;
   const strokeWidth = 3;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
     <div className="flex items-center gap-2.5 relative z-10 py-1" dir="ltr">
       <div className="relative w-10 h-10 flex items-center justify-center">
         {/* Glow behind */}
-        <div className={`absolute inset-1.5 rounded-full ${theme.bg} animate-pulse`} />
-        {/* Circular progress SVG */}
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+        <div className={`absolute inset-1.5 rounded-full ${theme.bg} animate-ping opacity-75`} />
+        {/* Circular progress SVG with continuous spin */}
+        <motion.svg 
+          className="w-full h-full" 
+          viewBox="0 0 36 36"
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+        >
           <circle
             cx="18"
             cy="18"
@@ -50,32 +38,24 @@ function AdvancedProgressRing({ color = 'indigo', language }: { color: string; l
             strokeWidth={strokeWidth}
             fill="transparent"
           />
-          <motion.circle
+          <circle
             cx="18"
             cy="18"
             r={radius}
             className={theme.stroke}
             strokeWidth={strokeWidth}
             fill="transparent"
-            strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset }}
-            transition={{ duration: 0.1, ease: "easeOut" }}
+            strokeDasharray={`${circumference * 0.4} ${circumference * 0.6}`}
             strokeLinecap="round"
           />
-        </svg>
+        </motion.svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[8px] font-black font-mono text-slate-600">
-            {progress}%
-          </span>
+          <span className={`w-1.5 h-1.5 rounded-full ${color === 'indigo' ? 'bg-indigo-500' : color === 'rose' ? 'bg-rose-500' : color === 'sky' ? 'bg-sky-500' : 'bg-amber-500'} animate-pulse`} />
         </div>
       </div>
       <div className="flex flex-col text-left">
         <span className="text-[9px] font-black text-slate-400 tracking-wider animate-pulse uppercase">
-          {progress < 100 
-            ? (language === 'ar' ? 'جاري الفحص...' : 'SCANNING...') 
-            : (language === 'ar' ? 'اكتمل' : 'SYNCED')
-          }
+          {language === 'ar' ? 'جاري التحميل...' : 'LOADING...'}
         </span>
       </div>
     </div>

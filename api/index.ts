@@ -28,7 +28,7 @@ async function fetchFullFFProfile(uid: string) {
                 "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36",
                 "Accept": "application/json"
             },
-            timeout: 2500
+            timeout: 15000
         });
 
         if (res.data && res.data.success && res.data.result) {
@@ -59,7 +59,7 @@ async function fetchFullFFProfile(uid: string) {
 
     const tryFfStalk = async () => {
         const stalkPromise = ffStalk(uid);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("ffStalk timeout")), 2500));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("ffStalk timeout")), 15000));
         const ffData = await Promise.race([stalkPromise, timeoutPromise]) as any;
         if (ffData && ffData.success && ffData.data) {
             return {
@@ -87,7 +87,7 @@ async function fetchFullFFProfile(uid: string) {
     };
 
     const tryFreeFireInfo = async () => {
-        const res = await axios.get(`https://freefireinfo-zy9l.onrender.com/api/v1/player-profile?uid=${uid}&server=ME`, { timeout: 2500 });
+        const res = await axios.get(`https://freefireinfo-zy9l.onrender.com/api/v1/player-profile?uid=${uid}&server=ME`, { timeout: 15000 });
         if (res.data && res.data.status === 'success' && res.data.player) {
             const p = res.data.player;
             return {
